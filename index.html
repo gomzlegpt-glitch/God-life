@@ -1,0 +1,929 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>우리집 갓생살기</title>
+<meta name="theme-color" content="#1d6a73">
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="icon" href="icon-192.png">
+<link rel="apple-touch-icon" href="apple-touch-icon.png">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="갓생살기">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans+KR:wght@400;500;600;700&display=swap">
+<style>
+/* 우리집 갓생살기 — 부부 각자의 공부·운동 스케줄 + 알림. 기본은 '내 스케줄'만, 상대방은 '함께 보기'. 주간 시간표 격자가 중심 */
+:root{
+  --bg:#f1f3f4; --surface:#ffffff; --sunk:#e8ecee; --fg:#172229; --muted:#5a6971; --line:#d9e0e3; --line2:#eef1f2;
+  --accent:#1d6a73; --accent-fg:#ffffff; --accent-soft:#dcefef;
+  --study:#2d5fa6; --study-soft:#e3ebf7; --ex:#2b7a4b; --ex-soft:#dcf0e2;
+  --chore:#a3620d; --chore-soft:#f7ead6; --fixed:#6a767e; --fixed-soft:#e9edef;
+  --warn:#b4511b; --warn-soft:#fbe7da; --shadow:0 1px 2px rgba(20,34,41,.06),0 2px 8px rgba(20,34,41,.05);
+  --font:"IBM Plex Sans KR","Apple SD Gothic Neo","Malgun Gothic",system-ui,sans-serif;
+}
+@media (prefers-color-scheme: dark){:root{
+  --bg:#10171b; --surface:#172126; --sunk:#0c1215; --fg:#e3e9ec; --muted:#98a7af; --line:#2a373e; --line2:#1f2a30;
+  --accent:#5fb3ba; --accent-fg:#0c1215; --accent-soft:#1b383b;
+  --study:#8ab0ea; --study-soft:#1b2b43; --ex:#7bc998; --ex-soft:#163025;
+  --chore:#e2ab5c; --chore-soft:#382a14; --fixed:#a2aeb5; --fixed-soft:#222d33;
+  --warn:#f0965e; --warn-soft:#3b2316; --shadow:none; color-scheme:dark}}
+*{box-sizing:border-box}
+[hidden]{display:none!important}
+body{margin:0;background:var(--bg);color:var(--fg);font-family:var(--font);font-size:15px;line-height:1.5;-webkit-text-size-adjust:100%;
+  padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px));
+  padding-top:max(18px,env(safe-area-inset-top,0px));padding-bottom:calc(72px + env(safe-area-inset-bottom,0px))}
+.app{max-width:1120px;margin:0 auto;display:flex;flex-direction:column;gap:14px}
+header.top{display:flex;flex-wrap:wrap;align-items:center;justify-content:space-between;gap:10px}
+.brand{display:flex;align-items:center;gap:12px}
+.logo{width:40px;height:40px;border-radius:11px;background:var(--accent);color:var(--accent-fg);display:grid;place-items:center;font-weight:700;font-size:1.05rem;flex:none}
+h1{font-size:1.3rem;margin:0;font-weight:700;letter-spacing:-.01em}
+.sub{color:var(--muted);font-size:.86rem}
+.who{display:flex;align-items:center;gap:6px;flex-wrap:wrap}
+.demo{background:var(--warn-soft);color:var(--fg);border-radius:10px;padding:9px 14px;font-size:.88rem}
+.demo b{color:var(--warn)}
+nav.tabs{display:flex;gap:4px;background:var(--sunk);padding:4px;border-radius:11px;overflow-x:auto;scrollbar-width:none}
+nav.tabs button{flex:1 0 auto;border:0;background:transparent;color:var(--muted);font:inherit;font-weight:600;padding:9px 13px;border-radius:8px;cursor:pointer;white-space:nowrap}
+nav.tabs button[aria-selected="true"]{background:var(--surface);color:var(--fg);box-shadow:var(--shadow)}
+button:focus-visible,input:focus-visible,select:focus-visible,summary:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+.card{background:var(--surface);border:1px solid var(--line);border-radius:14px;padding:16px;display:flex;flex-direction:column;gap:12px;min-width:0;box-shadow:var(--shadow)}
+.card h2{font-size:1.02rem;margin:0;display:flex;align-items:center;gap:8px;flex-wrap:wrap}
+.card h3{font-size:.86rem;margin:0;color:var(--muted);font-weight:600}
+.stack{display:flex;flex-direction:column;gap:14px}
+.cols{display:grid;grid-template-columns:minmax(260px,330px) minmax(0,1fr);gap:14px;align-items:start}
+.cols2{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(300px,100%),1fr));gap:14px;align-items:start}
+@media (max-width:760px){.cols{grid-template-columns:1fr}}
+.row{display:flex;align-items:center;gap:8px;flex-wrap:wrap}
+.spread{justify-content:space-between}
+.chip{display:inline-flex;align-items:center;gap:4px;font-size:.76rem;font-weight:600;padding:2px 9px;border-radius:99px;background:var(--sunk);color:var(--muted);white-space:nowrap}
+.chip.acc{background:var(--accent-soft);color:var(--accent)}
+.chip.min{background:var(--warn-soft);color:var(--warn)}
+.chip.now{background:var(--accent);color:var(--accent-fg)}
+.chip.ok{background:var(--ex-soft);color:var(--ex)}
+.num{font-variant-numeric:tabular-nums}
+.t-study{--c:var(--study);--cs:var(--study-soft)} .t-exercise{--c:var(--ex);--cs:var(--ex-soft)}
+.t-chores{--c:var(--chore);--cs:var(--chore-soft)} .t-fixed{--c:var(--fixed);--cs:var(--fixed-soft)}
+.kind{background:var(--cs);color:var(--c)}
+.stats{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(200px,100%),1fr));gap:12px}
+.stat{background:var(--surface);border:1px solid var(--line);border-radius:14px;padding:14px 16px;display:flex;flex-direction:column;gap:6px;box-shadow:var(--shadow)}
+.card .stat{box-shadow:none;background:var(--bg);border:0}
+.stat .k{font-size:.82rem;color:var(--muted);font-weight:600}
+.stat .v{font-size:1.45rem;font-weight:700;font-variant-numeric:tabular-nums;line-height:1.2}
+.stat .v small{font-size:.85rem;color:var(--muted);font-weight:500}
+@media (max-width:560px){.stats{grid-template-columns:repeat(3,minmax(0,1fr));gap:8px}.stats .stat{padding:10px}.stats .stat .v{font-size:1.02rem}.stats .stat .v small{display:block;font-size:.74rem}.stats .stat .note{display:none}}
+.bar{height:8px;border-radius:99px;background:var(--sunk);overflow:hidden}
+.bar span{display:block;height:100%;background:var(--c,var(--accent));border-radius:99px}
+.tl{list-style:none;margin:0;padding:0;display:flex;flex-direction:column}
+.tl li{display:grid;grid-template-columns:56px 1fr;gap:12px}
+.tl .tm{font-variant-numeric:tabular-nums;font-size:.8rem;color:var(--muted);padding-top:10px;text-align:right}
+.tl .tm b{display:block;color:var(--fg);font-size:.9rem}
+.tl .bx{border-left:4px solid var(--c);background:var(--cs);border-radius:10px;padding:10px 12px;margin:4px 0;display:flex;flex-direction:column;gap:8px;min-width:0}
+.tl li.fixed .bx{background:transparent;border:1px dashed var(--line);border-left:4px solid var(--fixed);padding:6px 12px;color:var(--muted)}
+.tl li.fixed .tm{padding-top:6px}
+.tl li.cur .bx{box-shadow:0 0 0 2px var(--accent)}
+.tl .lab{font-weight:600;overflow-wrap:anywhere}
+.tl li.fixed .lab{font-weight:500}
+.tl li.done .lab{text-decoration:line-through;text-decoration-color:var(--muted)}
+.seg{display:inline-flex;border:1px solid var(--line);border-radius:9px;overflow:hidden;background:var(--surface)}
+.seg button{border:0;background:transparent;color:var(--fg);font:inherit;font-size:.82rem;padding:6px 11px;cursor:pointer;min-height:34px}
+.seg button+button{border-left:1px solid var(--line)}
+.seg button[aria-pressed="true"]{background:var(--accent);color:var(--accent-fg)}
+.seg button.skip[aria-pressed="true"]{background:var(--warn);color:#fff}
+.seg button.part[aria-pressed="true"]{background:var(--chore);color:#fff}
+.st{font-size:.8rem;font-weight:600}
+.st.done{color:var(--ex)} .st.part{color:var(--chore)} .st.skip{color:var(--warn)} .st.none{color:var(--muted);font-weight:400}
+select,input[type=text],input[type=email],input[type=password],input[type=date],input[type=time],input[type=number]{font:inherit;font-size:16px;color:var(--fg);background:var(--surface);border:1px solid var(--line);border-radius:8px;padding:7px 9px;min-width:0;width:100%}
+.btn{font:inherit;font-weight:600;font-size:.88rem;border:1px solid var(--line);background:var(--surface);color:var(--fg);padding:8px 14px;border-radius:9px;cursor:pointer;white-space:nowrap}
+.btn.primary{background:var(--accent);border-color:var(--accent);color:var(--accent-fg)}
+.btn.warn{background:var(--warn);border-color:var(--warn);color:#fff}
+.btn.small{padding:5px 10px;font-size:.8rem}
+.btn.ghost{border-color:transparent;background:transparent;color:var(--muted)}
+.btn.block{width:100%;padding:11px}
+.btn:disabled{opacity:.5;cursor:default}
+.banner{background:var(--warn-soft);border-radius:10px;padding:10px 12px;display:flex;flex-direction:column;gap:8px}
+.banner strong{color:var(--warn)}
+.info{background:var(--accent-soft);border-radius:10px;padding:10px 12px;font-size:.88rem}
+.check{display:flex;align-items:center;gap:8px;font-size:.9rem}
+.check input{width:18px;height:18px;accent-color:var(--accent);flex:none}
+.muted{color:var(--muted)}
+.note{font-size:.83rem;color:var(--muted)}
+.empty{color:var(--muted);font-size:.9rem;padding:18px;border:1px dashed var(--line);border-radius:10px;text-align:center}
+.tt{overflow-x:auto;border:1px solid var(--line);border-radius:12px;background:var(--surface)}
+.tt-in{display:grid;grid-template-columns:42px repeat(7,minmax(74px,1fr));min-width:590px}
+.tt-dh{background:var(--surface);border-bottom:1px solid var(--line);border-left:1px solid var(--line2);padding:7px 4px;text-align:center;font-size:.8rem;display:flex;flex-direction:column;line-height:1.25}
+.tt-dh span{color:var(--muted);font-size:.72rem;font-variant-numeric:tabular-nums}
+.tt-dh.sun b{color:var(--warn)} .tt-dh.sat b{color:var(--study)}
+.tt-dh.today{background:var(--accent-soft)} .tt-dh.today b{color:var(--accent)}
+.tt-corner{border-bottom:1px solid var(--line)}
+.tt-times{position:relative}
+.tt-times span{position:absolute;right:6px;transform:translateY(-50%);font-size:.68rem;color:var(--muted);font-variant-numeric:tabular-nums}
+.tt-times span:first-child{transform:none}
+.tt-col{position:relative;border-left:1px solid var(--line2);height:calc(var(--hours) * var(--hr));
+  background-image:linear-gradient(to bottom,var(--line2) 1px,transparent 1px);background-size:100% var(--hr)}
+.tt-col.today{background-color:color-mix(in srgb,var(--accent-soft) 45%,transparent)}
+.tb{position:absolute;left:2px;width:calc(100% - 4px);border:0;border-radius:6px;padding:3px 5px;font:inherit;font-size:.72rem;line-height:1.25;text-align:left;overflow:hidden;
+  background:var(--cs);color:var(--fg);border-left:3px solid var(--c);z-index:1;display:flex;flex-direction:column;gap:1px}
+button.tb{cursor:pointer}
+.tb .l{font-weight:600;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden;word-break:keep-all;overflow-wrap:anywhere}
+.tb .t{color:var(--muted);font-size:.66rem;font-variant-numeric:tabular-nums}
+.tb.fx{left:0;width:100%;z-index:0;border-left:0;border-radius:0;color:var(--muted);background:repeating-linear-gradient(135deg,var(--fixed-soft) 0 6px,transparent 6px 11px)}
+.tb.fx .l{font-weight:500}
+.tb.sel{box-shadow:0 0 0 2px var(--accent);z-index:3}
+.tb[data-st]::after{position:absolute;top:2px;right:3px;font-size:.7rem;font-weight:700}
+.tb[data-st="done"]::after{content:"✓";color:var(--ex)}
+.tb[data-st="part"]::after{content:"½";color:var(--chore)}
+.tb[data-st="skip"]::after{content:"✕";color:var(--warn)}
+.tb[data-st="skip"]{opacity:.6}
+.nowline{position:absolute;left:0;right:0;height:2px;background:var(--warn);z-index:4;pointer-events:none}
+.nowline::before{content:"";position:absolute;left:-4px;top:-3px;width:8px;height:8px;border-radius:50%;background:var(--warn)}
+.legend{display:flex;gap:12px;flex-wrap:wrap;font-size:.78rem;color:var(--muted);align-items:center}
+.legend i{display:inline-block;width:12px;height:12px;border-radius:3px;background:var(--c);vertical-align:-1px;margin-right:5px}
+.legend .t-fixed i{background:repeating-linear-gradient(135deg,var(--fixed) 0 2px,var(--fixed-soft) 2px 4px)}
+.form{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(140px,100%),1fr));gap:10px}
+.form label{display:flex;flex-direction:column;gap:4px;font-size:.8rem;color:var(--muted);font-weight:500}
+.form label.wide{grid-column:1/-1}
+.daypick{display:flex;gap:5px;flex-wrap:wrap}
+.daypick label{flex-direction:row;align-items:center;gap:4px;color:var(--fg);font-size:.88rem;background:var(--sunk);padding:5px 9px;border-radius:8px;cursor:pointer}
+.daypick input{accent-color:var(--accent)}
+table.list{width:100%;border-collapse:collapse;font-size:.88rem}
+table.list th,table.list td{text-align:left;padding:8px 6px;border-bottom:1px solid var(--line);vertical-align:middle}
+table.list th{color:var(--muted);font-weight:600;font-size:.78rem}
+.tablewrap{overflow-x:auto}
+.pick{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(290px,100%),1fr));gap:14px}
+.pick ul{margin:0;padding-left:18px;font-size:.88rem;display:flex;flex-direction:column;gap:3px}
+details summary{cursor:pointer;font-size:.86rem;color:var(--accent);font-weight:600}
+details[open] summary{margin-bottom:8px}
+.setrow{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:10px 0;border-top:1px solid var(--line2)}
+.setrow:first-of-type{border-top:0}
+.setrow .lbl{display:flex;flex-direction:column;gap:2px}
+.setrow .lbl b{font-size:.92rem}
+.setrow .ctl{display:flex;align-items:center;gap:8px;flex:none}
+.setrow .ctl select,.setrow .ctl input{width:auto}
+.switch{position:relative;width:46px;height:28px;flex:none}
+.switch input{opacity:0;width:100%;height:100%;margin:0;position:absolute;cursor:pointer;z-index:1}
+.switch span{position:absolute;inset:0;border-radius:99px;background:var(--line);transition:background .15s}
+.switch span::after{content:"";position:absolute;top:3px;left:3px;width:22px;height:22px;border-radius:50%;background:#fff;box-shadow:0 1px 2px rgba(0,0,0,.2);transition:transform .15s}
+.switch input:checked+span{background:var(--accent)}
+.switch input:checked+span::after{transform:translateX(18px)}
+.switch input:focus-visible+span{outline:2px solid var(--accent);outline-offset:2px}
+.login{max-width:420px;margin:20px auto 0;width:100%}
+.err{color:var(--warn);font-size:.86rem}
+.savebar{position:sticky;bottom:calc(10px + env(safe-area-inset-bottom,0px));z-index:5;background:var(--fg);color:var(--bg);border-radius:12px;padding:10px 12px 10px 16px;display:flex;align-items:center;justify-content:space-between;gap:10px;box-shadow:0 6px 20px rgba(0,0,0,.18)}
+.savebar .btn{border-color:transparent}
+.sheet{position:fixed;inset:0;z-index:30;background:rgba(10,16,20,.45);display:flex;align-items:flex-end;justify-content:center;padding:16px}
+.sheet .panel{background:var(--surface);color:var(--fg);border-radius:16px;padding:18px;width:min(440px,100%);display:flex;flex-direction:column;gap:12px;margin-bottom:env(safe-area-inset-bottom,0px)}
+@media (min-width:700px){.sheet{align-items:center}}
+.toast{position:fixed;left:50%;transform:translateX(-50%);bottom:calc(18px + env(safe-area-inset-bottom,0px));background:var(--fg);color:var(--bg);padding:9px 18px;border-radius:99px;font-size:.88rem;z-index:40;max-width:calc(100% - 32px);text-align:center}
+.skel{height:220px;border-radius:14px;background:linear-gradient(90deg,var(--sunk),var(--surface),var(--sunk));background-size:200% 100%}
+@media (prefers-reduced-motion: no-preference){.skel{animation:sk 1.4s linear infinite}.bar span{transition:width .3s ease}}
+@keyframes sk{to{background-position:-200% 0}}
+/* 휴대폰: 탭을 화면 아래 고정 (앱처럼) */
+@media (max-width:560px){
+  nav.tabs{position:fixed;left:0;right:0;bottom:0;z-index:20;border-radius:0;gap:2px;background:var(--surface);border-top:1px solid var(--line);
+    padding:6px max(6px,env(safe-area-inset-left,0px)) calc(6px + env(safe-area-inset-bottom,0px))}
+  nav.tabs button{flex:1 1 0;min-width:0;padding:10px 2px;font-size:.8rem}
+  nav.tabs button[aria-selected="true"]{background:var(--accent-soft);color:var(--accent);box-shadow:none}
+  .savebar{bottom:calc(70px + env(safe-area-inset-bottom,0px))}
+  .toast{bottom:calc(76px + env(safe-area-inset-bottom,0px))}
+}
+</style>
+</head>
+<body>
+<div class="app">
+  <header class="top">
+    <div class="brand"><div class="logo" aria-hidden="true">갓</div>
+      <div><h1>우리집 갓생살기</h1><div class="sub" id="dateLabel"></div></div></div>
+    <div class="who" id="who"></div>
+  </header>
+  <div class="demo" id="demoBanner" hidden><b>미리보기 모드</b> · 추천 스케줄과 예시 기록으로 보여 드리는 화면입니다. 눌러 보셔도 저장되지 않습니다.</div>
+  <nav class="tabs" id="tabs" role="tablist" aria-label="화면" hidden>
+    <button role="tab" data-tab="today" aria-selected="true">오늘</button>
+    <button role="tab" data-tab="week" aria-selected="false">이번 주</button>
+    <button role="tab" data-tab="together" aria-selected="false">함께 보기</button>
+    <button role="tab" data-tab="edit" aria-selected="false">내 스케줄</button>
+    <button role="tab" data-tab="alarm" aria-selected="false">알림·설정</button>
+  </nav>
+  <main id="main"><div class="skel" aria-label="불러오는 중"></div></main>
+</div>
+<div class="sheet" id="sheet" hidden></div>
+<div class="toast" id="toast" hidden></div>
+
+<script src="config.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script>
+(() => {
+const DAYS = ["일","월","화","수","목","금","토"];
+const ORDER = [1,2,3,4,5,6,0];
+const TYPES = {study:"공부", exercise:"운동", chores:"집안일", fixed:"고정 일정"};
+const REASONS = ["야근","약속","집안일","컨디션","기타"];
+const EVTYPES = ["야근","회식","약속","가족 행사","병원·장보기","기타"];
+const LIGHT = ["야근","회식","약속"];
+const W = [1,2,3,4,5];
+const ALARM_DEFAULT = {blockOn:true, blockBefore:10, eveningOn:true, eveningAt:"22:00", sundayOn:true, sundayAt:"20:00"};
+/* 공부 모듈: 프로필의 examKey로 연결. 같은 주소 아래 하위 페이지로 붙이면 로그인이 그대로 이어짐 */
+const MODULES = {
+  civil9: {name:"사복직 합격 도우미", path:"civil/", ready:false},
+  elec:   {name:"전기기사 도우미", path:"elec/", ready:false}
+};
+
+/* ---------- 추천 스케줄 ---------- */
+const TEMPLATES = {
+  husband: {
+    title: "남편 · 전기기사", who: "직장인, 야근 잦음",
+    points: ["근무 8:30~17:30 (이동 포함 8:00~18:00) 기준", "출근 전 20분 + 점심 20분 + 퇴근 후 1시간", "토요일 오전 3시간 집중, 일요일 오후는 예비 시간", "운동 월·수·금 저녁 + 토요일 함께 운동", "주말 청소·장보기 담당 (아내 공부 시간 확보)"],
+    data: { label:"남편", exam:"전기기사", examKey:"elec", examDate:"", weekStudyH:12, weekExN:3,
+      minStudy:"공식 카드 10개 또는 기출 5문제 (15분)", minEx:"스트레칭 10분",
+      blocks:[
+        {days:W, start:"07:00", end:"07:20", type:"study", label:"출근 전 공식 암기 카드"},
+        {days:W, start:"08:00", end:"08:30", type:"fixed", label:"출근 이동"},
+        {days:W, start:"08:30", end:"17:30", type:"fixed", label:"근무"},
+        {days:W, start:"12:30", end:"12:50", type:"study", label:"점심 기출 5문제"},
+        {days:W, start:"17:30", end:"18:00", type:"fixed", label:"퇴근 이동"},
+        {days:W, start:"18:00", end:"19:00", type:"fixed", label:"귀가·저녁 식사"},
+        {days:[1,3,5], start:"19:30", end:"20:00", type:"exercise", label:"걷기·근력 30분"},
+        {days:[2,4], start:"19:30", end:"20:00", type:"chores", label:"설거지·정리"},
+        {days:[1,2,3,4], start:"20:30", end:"21:30", type:"study", label:"개념 강의 + 계산 문제"},
+        {days:[5], start:"20:30", end:"21:00", type:"study", label:"이번 주 오답 정리"},
+        {days:[6], start:"09:00", end:"12:00", type:"study", label:"주말 집중: 한 단원 끝내기"},
+        {days:[6], start:"14:00", end:"15:00", type:"exercise", label:"함께 운동"},
+        {days:[6], start:"16:00", end:"17:00", type:"chores", label:"집 청소 담당"},
+        {days:[0], start:"10:00", end:"11:30", type:"chores", label:"장보기·빨래"},
+        {days:[0], start:"14:00", end:"16:00", type:"study", label:"예비 시간 (밀린 칸 처리)"},
+        {days:[0], start:"20:00", end:"20:30", type:"fixed", label:"주간 점검 (함께)"}
+      ]}
+  },
+  wife: {
+    title: "아내 · 9급 사회복지직", who: "집에서 공부 + 집안일",
+    points: ["오전·오후 2시간씩 전공 과목 (사회복지학·행정법)", "늦은 오후 국어·영어 번갈아, 금요일은 약한 과목 보충", "밤 1시간 오답·OX, 금요일 밤은 휴식", "토요일 오전 주간 모의고사, 일요일 오후 예비 시간"],
+    data: { label:"아내", exam:"9급 사회복지직", examKey:"civil9", examDate:"", weekStudyH:35, weekExN:4,
+      minStudy:"OX 20문제 + 영단어 30개 (20분)", minEx:"스트레칭 10분",
+      blocks:[
+        {days:W, start:"07:30", end:"08:30", type:"chores", label:"아침 식사·정리"},
+        {days:W, start:"08:30", end:"09:00", type:"study", label:"영단어 30분"},
+        {days:W, start:"09:00", end:"11:00", type:"study", label:"사회복지학개론"},
+        {days:W, start:"11:00", end:"11:30", type:"exercise", label:"스트레칭·홈트"},
+        {days:W, start:"11:30", end:"13:00", type:"chores", label:"점심·빨래"},
+        {days:W, start:"13:00", end:"15:00", type:"study", label:"행정법총론"},
+        {days:[1,3], start:"15:30", end:"17:00", type:"study", label:"국어 (문법·독해)"},
+        {days:[2,4], start:"15:30", end:"17:00", type:"study", label:"영어 독해"},
+        {days:[5], start:"15:30", end:"17:00", type:"study", label:"약한 과목 보충 (주간 오답)"},
+        {days:W, start:"17:00", end:"18:30", type:"chores", label:"저녁 준비"},
+        {days:[2,4], start:"19:30", end:"20:00", type:"exercise", label:"동네 걷기"},
+        {days:[1,2,3,4], start:"20:30", end:"21:30", type:"study", label:"오답·OX 복습"},
+        {days:[6], start:"09:00", end:"12:00", type:"study", label:"주간 모의고사"},
+        {days:[6], start:"14:00", end:"15:00", type:"exercise", label:"함께 운동"},
+        {days:[0], start:"14:00", end:"16:00", type:"study", label:"예비 시간 (밀린 칸 처리)"},
+        {days:[0], start:"20:00", end:"20:30", type:"fixed", label:"주간 점검 (함께)"}
+      ]}
+  }
+};
+const fromTpl = key => { const d = JSON.parse(JSON.stringify(TEMPLATES[key].data)); d.role = key; d.alarm = Object.assign({}, ALARM_DEFAULT); d.blocks = d.blocks.map((b,i) => Object.assign({id: key[0] + i}, b)); return d; };
+
+const CFG = window.APP_CONFIG || {};
+const S = { mode:"loading", sb:null, uid:null, email:"", canWrite:false, people:{}, days:{}, weeks:{}, family:[], tab:"today",
+  weekOff:0, draft:null, dirty:false, editId:null, partner:null, sheetFn:null, confirmTpl:null, pushOn:false, installEvt:null, loginMsg:"", loginErr:"" };
+
+/* ---------- helpers ---------- */
+const pad = n => String(n).padStart(2,"0");
+const ymd = d => `${d.getFullYear()}-${pad(d.getMonth()+1)}-${pad(d.getDate())}`;
+const parseYmd = s => { const [y,m,d] = s.split("-").map(Number); return new Date(y, m-1, d); };
+const today = () => { const n = new Date(); return new Date(n.getFullYear(), n.getMonth(), n.getDate()); };
+const weekStart = d => { const x = new Date(d.getFullYear(), d.getMonth(), d.getDate()); x.setDate(x.getDate() - (x.getDay()+6)%7); return x; };
+const addDays = (d,n) => { const x = new Date(d); x.setDate(x.getDate()+n); return x; };
+const toMin = s => { const [h,m] = String(s||"0:0").split(":").map(Number); return (h||0)*60 + (m||0); };
+const span = (a,b) => { let r = toMin(b) - toMin(a); if (r <= 0) r += 1440; return r; };
+const hm = m => { m = Math.round(m); const h = Math.floor(m/60), r = m%60; return h ? (r ? `${h}시간 ${r}분` : `${h}시간`) : `${r}분`; };
+const md = d => `${d.getMonth()+1}/${d.getDate()}(${DAYS[d.getDay()]})`;
+const nowMin = () => { const n = new Date(); return n.getHours()*60 + n.getMinutes(); };
+const uidGen = () => Math.random().toString(36).slice(2,10);
+const clone = o => JSON.parse(JSON.stringify(o));
+
+function h(tag, attrs, ...kids){
+  const el = document.createElement(tag);
+  if (attrs) for (const [k,v] of Object.entries(attrs)) {
+    if (v == null || v === false) continue;
+    if (k === "class") el.className = v;
+    else if (k.startsWith("on")) el.addEventListener(k.slice(2), v);
+    else if (k === "value") el.value = v;
+    else if (k === "checked") el.checked = !!v;
+    else el.setAttribute(k, v === true ? "" : v);
+  }
+  for (const k of kids.flat()) { if (k == null || k === false) continue; el.append(k instanceof Node ? k : document.createTextNode(String(k))); }
+  return el;
+}
+let toastT;
+function toast(msg){ const t = document.getElementById("toast"); t.textContent = msg; t.hidden = false; clearTimeout(toastT); toastT = setTimeout(() => t.hidden = true, 2600); }
+
+/* ---------- 저장 (Supabase) ---------- */
+const queues = {};
+function remote(key, fn){
+  if (S.mode !== "live") return Promise.resolve();
+  const run = async () => {
+    try { const r = await fn(); if (r && r.error) throw r.error; }
+    catch (e) { console.error(e); toast(navigator.onLine ? "저장하지 못했습니다. 잠시 후 다시 눌러 주세요." : "오프라인이라 저장하지 못했습니다. 연결되면 다시 눌러 주세요."); }
+  };
+  queues[key] = (queues[key] || Promise.resolve()).then(run);
+  return queues[key];
+}
+const putProfile = data => remote("p", () => S.sb.from("profiles").upsert({user_id: S.uid, data, updated_at: new Date().toISOString()}));
+const putDay = (key, cur) => remote("d" + key, () => S.sb.from("sch_days").upsert({user_id: S.uid, date: key, data: cur}));
+const putWeek = (k, cur) => remote("w" + k, () => S.sb.from("sch_weeks").upsert({user_id: S.uid, week_start: k, cleared: cur.cleared || 0}));
+
+async function loadAll(){
+  const sb = S.sb, since = ymd(addDays(today(), -120));
+  const [p, d, w, f] = await Promise.all([
+    sb.from("profiles").select("user_id,data"),
+    sb.from("sch_days").select("user_id,date,data").gte("date", since),
+    sb.from("sch_weeks").select("user_id,week_start,cleared"),
+    sb.from("sch_family").select("id,date,who,type,time,memo").gte("date", ymd(addDays(today(), -14)))
+  ]);
+  for (const r of [p, d, w, f]) if (r.error) throw r.error;
+  const people = {}; p.data.forEach(r => { if (r.data && r.data.label) people[r.user_id] = r.data; });
+  const days = {}; d.data.forEach(r => { (days[r.user_id] = days[r.user_id] || {})[r.date] = r.data || {}; });
+  const weeks = {}; w.data.forEach(r => { (weeks[r.user_id] = weeks[r.user_id] || {})[r.week_start] = {cleared: r.cleared || 0}; });
+  S.people = people; S.days = days; S.weeks = weeks;
+  S.family = f.data.map(r => ({id: r.id, date: r.date, who: r.who, type: r.type, time: r.time || "", memo: r.memo || ""}));
+}
+let reloadT;
+function scheduleReload(){ clearTimeout(reloadT); reloadT = setTimeout(async () => { try { await loadAll(); render(true); } catch (e) { console.error(e); } }, 400); }
+
+/* ---------- 데이터 ---------- */
+const me = () => S.uid && S.people[S.uid];
+const others = () => Object.entries(S.people).filter(([id]) => id !== S.uid).map(([id,p]) => Object.assign({id}, p));
+const blocksOn = (p, d) => (p.blocks||[]).filter(b => (b.days||[]).includes(d.getDay())).sort((a,b) => toMin(a.start) - toMin(b.start));
+const dayDoc = (id, key) => (S.days[id] && S.days[id][key]) || {};
+const eventsFor = (id, key) => S.family.filter(e => e.date === key && (e.who === id || e.who === "all"));
+const modeFor = (id, key) => { const d = dayDoc(id, key); if (d.mode) return d.mode; return eventsFor(id, key).some(e => LIGHT.includes(e.type)) ? "min" : "normal"; };
+const tracked = b => b.type !== "fixed";
+function dday(p){
+  if (!p || !p.examDate) return null;
+  const diff = Math.round((parseYmd(p.examDate) - today()) / 86400000);
+  return diff > 0 ? `D-${diff}` : diff === 0 ? "D-DAY" : `D+${-diff}`;
+}
+function weekStats(id, p, ref){
+  const ws = weekStart(ref); let done = 0, backlog = 0, planned = 0, exDays = 0; const reasons = {};
+  for (let i = 0; i < 7; i++){
+    const d = addDays(ws, i), key = ymd(d), day = dayDoc(id, key); let ex = false;
+    for (const b of blocksOn(p, d)){
+      const m = span(b.start, b.end), s = day.st && day.st[b.id];
+      if (b.type === "study"){
+        planned += m;
+        if (s === "done") done += m;
+        else if (s === "part"){ done += m/2; backlog += m/2; }
+        else if (s === "skip") backlog += m;
+      }
+      if (b.type === "exercise" && (s === "done" || s === "part")) ex = true;
+      if ((s === "skip" || s === "part") && day.why && day.why[b.id]) reasons[day.why[b.id]] = (reasons[day.why[b.id]]||0) + 1;
+    }
+    if (ex) exDays++;
+  }
+  const wk = (S.weeks[id] && S.weeks[id][ymd(ws)]) || {};
+  const cleared = Math.min(wk.cleared || 0, backlog);
+  return { done: done + cleared, backlog: backlog - cleared, cleared, planned, exDays, reasons };
+}
+function streak(id, p){
+  let n = 0, d = today();
+  for (let i = 0; i < 400; i++){
+    const day = dayDoc(id, ymd(d));
+    const ok = day.minStudy || Object.entries(day.st||{}).some(([bid,s]) => (s === "done" || s === "part") && (p.blocks||[]).some(b => b.id === bid && b.type === "study"));
+    if (ok) n++; else if (i > 0) break;
+    d = addDays(d, -1);
+  }
+  return n;
+}
+const plannedStudy = p => (p.blocks||[]).filter(b => b.type === "study").reduce((s,b) => s + span(b.start,b.end) * (b.days||[]).length, 0);
+
+/* ---------- 기록 동작 ---------- */
+function saveDay(id, key, cur){ cur.date = key; S.days[id] = S.days[id] || {}; S.days[id][key] = cur; refresh(); putDay(key, cur); }
+function setBlock(id, key, bid, status){
+  if (id !== S.uid || !S.canWrite) return;
+  const cur = clone(dayDoc(id, key)); cur.st = cur.st || {}; cur.why = cur.why || {};
+  if (cur.st[bid] === status){ delete cur.st[bid]; delete cur.why[bid]; }
+  else { cur.st[bid] = status; if (status === "done") delete cur.why[bid]; }
+  saveDay(id, key, cur);
+}
+function setReason(id, key, bid, r){ const cur = clone(dayDoc(id, key)); cur.why = cur.why || {}; cur.why[bid] = r; saveDay(id, key, cur); }
+function setDayField(id, key, f, v){ if (id !== S.uid || !S.canWrite) return; const cur = clone(dayDoc(id, key)); cur[f] = v; saveDay(id, key, cur); }
+function refresh(){ render(false, true); if (S.sheetFn) S.sheetFn(); }
+
+/* ---------- 공통 조각 ---------- */
+const kindChip = t => h("span", {class:`chip kind t-${t}`}, TYPES[t] || t);
+function statusCtl(pid, key, b, editable){
+  const day = dayDoc(pid, key), s = day.st && day.st[b.id];
+  if (!editable){
+    const lab = {done:"완료", part:"일부", skip:"못함"}[s] || "기록 전";
+    return h("span", {class:`st ${s || "none"}`}, lab + (day.why && day.why[b.id] ? ` · ${day.why[b.id]}` : ""));
+  }
+  return h("div", {class:"row"},
+    h("div", {class:"seg", role:"group", "aria-label":`${b.label} 상태`},
+      h("button", {"aria-pressed": String(s === "done"), onclick: () => setBlock(pid, key, b.id, "done")}, "완료"),
+      h("button", {class:"part", "aria-pressed": String(s === "part"), onclick: () => setBlock(pid, key, b.id, "part")}, "일부"),
+      h("button", {class:"skip", "aria-pressed": String(s === "skip"), onclick: () => setBlock(pid, key, b.id, "skip")}, "못함")),
+    (s === "skip" || s === "part") ? h("select", {"aria-label":"사유", style:"width:auto", onchange: ev => setReason(pid, key, b.id, ev.target.value)},
+      h("option", {value:""}, "사유 선택"), REASONS.map(r => { const o = h("option", {value:r}, r); if (day.why && day.why[b.id] === r) o.selected = true; return o; })) : null);
+}
+function statCard(label, value, goalText, pct, cls, sub){
+  return h("div", {class:`stat ${cls||""}`}, h("div", {class:"k"}, label), h("div", {class:"v"}, value, goalText ? h("small", null, ` / ${goalText}`) : null),
+    pct != null ? h("div", {class:"bar", role:"img", "aria-label":`${label} ${pct}%`}, h("span", {style:`width:${Math.min(100,pct)}%`})) : null,
+    sub ? h("div", {class:"note"}, sub) : null);
+}
+const legend = () => h("div", {class:"legend"}, ["study","exercise","chores","fixed"].map(t => h("span", {class:`t-${t}`}, h("i"), TYPES[t])), h("span", null, "✓ 완료 · ½ 일부 · ✕ 못함"));
+
+/* ---------- 주간 시간표 ---------- */
+function timetable(blocks, o){
+  o = o || {};
+  const hr = o.compact ? 22 : 42;
+  let h0 = 6, h1 = 23;
+  for (const b of blocks){ const s = toMin(b.start), e = toMin(b.end); h0 = Math.min(h0, Math.floor(s/60)); if (e > s) h1 = Math.max(h1, Math.ceil(e/60)); }
+  const inner = h("div", {class:"tt-in", style:`--hr:${hr}px;--hours:${h1-h0}`});
+  inner.append(h("div", {class:"tt-corner"}));
+  const tkey = ymd(today());
+  ORDER.forEach((dow, i) => {
+    const date = o.start ? addDays(o.start, i) : null, isT = date && ymd(date) === tkey;
+    inner.append(h("div", {class:`tt-dh${isT ? " today" : ""}${dow === 0 ? " sun" : dow === 6 ? " sat" : ""}`}, h("b", null, DAYS[dow]), date ? h("span", null, `${date.getMonth()+1}/${date.getDate()}`) : null));
+  });
+  const times = h("div", {class:"tt-times"});
+  for (let k = h0; k < h1; k += (o.compact ? 2 : 1)) times.append(h("span", {style:`top:${(k-h0)*hr}px`}, `${k}시`));
+  inner.append(times);
+  ORDER.forEach((dow, i) => {
+    const date = o.start ? addDays(o.start, i) : null, isT = date && ymd(date) === tkey;
+    const col = h("div", {class:`tt-col${isT ? " today" : ""}`});
+    const list = blocks.filter(b => (b.days||[]).includes(dow));
+    const place = (b, extra) => {
+      const top = (toMin(b.start) - h0*60) / 60 * hr, ht = Math.max(o.compact ? 6 : 16, span(b.start, b.end) / 60 * hr - 2);
+      const st = o.statusOf && date ? o.statusOf(b, date) : null;
+      const clickable = o.onPick && (b.type !== "fixed" || o.editFixed);
+      const name = b.label || TYPES[b.type];
+      col.append(h(clickable ? "button" : "div", {class:`tb t-${b.type}${b.type === "fixed" ? " fx" : ""}${o.selected === b.id ? " sel" : ""}`,
+        style:`top:${top}px;height:${ht}px;${extra || ""}`, "data-st": st || null, title:`${name} ${b.start}–${b.end}`,
+        "aria-label": clickable ? `${DAYS[dow]}요일 ${b.start}–${b.end} ${name}${st ? " " + ({done:"완료",part:"일부",skip:"못함"}[st]) : ""}` : null,
+        onclick: clickable ? () => o.onPick(b, date) : null},
+        o.compact ? null : h("span", {class:"l"}, name),
+        !o.compact && ht >= 36 && b.type !== "fixed" ? h("span", {class:"t"}, `${b.start}–${b.end}`) : null));
+    };
+    list.filter(b => b.type === "fixed").forEach(b => place(b));
+    const act = list.filter(b => b.type !== "fixed").sort((a,b) => toMin(a.start) - toMin(b.start)), placed = [];
+    for (const b of act){ const s = toMin(b.start), e = s + span(b.start, b.end), ov = placed.filter(p => p.s < e && s < p.e); let lane = 0; while (ov.some(p => p.lane === lane)) lane++; placed.push({b, s, e, lane}); }
+    for (const p of placed){ const n = Math.max(...placed.filter(q => q.s < p.e && p.s < q.e).map(q => q.lane)) + 1; place(p.b, n > 1 ? `left:calc(${p.lane*100/n}% + 2px);width:calc(${100/n}% - 4px);` : ""); }
+    if (isT){ const nm = nowMin(); if (nm >= h0*60 && nm <= h1*60) col.append(h("div", {class:"nowline", style:`top:${(nm - h0*60)/60*hr}px`})); }
+    inner.append(col);
+  });
+  return h("div", {class:"tt"}, inner);
+}
+
+/* ---------- 시트(팝업) ---------- */
+function openSheet(build){
+  const sh = document.getElementById("sheet");
+  S.sheetFn = () => { sh.replaceChildren(h("div", {class:"panel", role:"dialog", "aria-modal":"true", onclick: e => e.stopPropagation()}, build())); };
+  S.sheetFn(); sh.hidden = false;
+  const f = sh.querySelector(".seg button, button"); if (f) f.focus();
+}
+function closeSheet(){ const sh = document.getElementById("sheet"); sh.hidden = true; sh.replaceChildren(); S.sheetFn = null; }
+document.getElementById("sheet").addEventListener("click", closeSheet);
+document.addEventListener("keydown", e => { if (e.key === "Escape" && S.sheetFn) closeSheet(); });
+function blockSheet(pid, b, date){
+  const key = ymd(date), future = key > ymd(today()), editable = pid === S.uid && S.canWrite && !future;
+  openSheet(() => h("div", {class:"stack", style:"gap:12px"},
+    h("div", {class:"row spread"}, h("div", {class:"row"}, kindChip(b.type), h("b", null, b.label || TYPES[b.type])), h("button", {class:"btn small ghost", onclick: closeSheet}, "닫기")),
+    h("div", {class:"note num"}, `${md(date)} ${b.start}–${b.end} · ${hm(span(b.start, b.end))}`),
+    future ? h("div", {class:"note"}, "아직 오지 않은 날입니다. 당일부터 기록할 수 있습니다.") : statusCtl(pid, key, b, editable)));
+}
+
+/* ---------- 화면: 로그인 ---------- */
+function loginView(){
+  const em = h("input", {type:"email", autocomplete:"username", placeholder:"이메일", "aria-label":"이메일"});
+  const pw = h("input", {type:"password", autocomplete:"current-password", placeholder:"비밀번호 (6자 이상)", "aria-label":"비밀번호"});
+  const go = async (signup) => {
+    S.loginErr = ""; S.loginMsg = "";
+    if (!em.value.trim() || pw.value.length < 6){ S.loginErr = "이메일과 6자 이상 비밀번호를 입력해 주세요."; return render(false, true); }
+    const fn = signup ? S.sb.auth.signUp({email: em.value.trim(), password: pw.value}) : S.sb.auth.signInWithPassword({email: em.value.trim(), password: pw.value});
+    const {data, error} = await fn;
+    if (error){
+      S.loginErr = /invalid login/i.test(error.message) ? "이메일 또는 비밀번호가 맞지 않습니다." : /already registered/i.test(error.message) ? "이미 가입된 이메일입니다. 로그인을 눌러 주세요." : /signups not allowed/i.test(error.message) ? "새 가입이 막혀 있습니다. 가족 계정으로 로그인해 주세요." : `로그인하지 못했습니다: ${error.message}`;
+      return render(false, true);
+    }
+    if (data.session) return startLive(data.session.user);
+    S.loginMsg = "가입 확인 메일을 보냈습니다. 메일의 링크를 누른 뒤 여기서 로그인해 주세요."; render(false, true);
+  };
+  const form = h("form", {class:"card login", onsubmit: e => { e.preventDefault(); go(false); }},
+    h("h2", null, "로그인"),
+    h("div", {class:"note"}, "각자 자기 계정으로 들어오면 내 스케줄과 내 알림만 받습니다."),
+    em, pw,
+    S.loginErr ? h("div", {class:"err", role:"alert"}, S.loginErr) : null,
+    S.loginMsg ? h("div", {class:"info", role:"status"}, S.loginMsg) : null,
+    h("button", {class:"btn primary block", type:"submit"}, "로그인"),
+    h("button", {class:"btn block", type:"button", onclick: () => go(true)}, "처음이면 가입하기"),
+    h("a", {href:"?demo", class:"note", style:"text-align:center"}, "로그인 없이 미리보기"));
+  return form;
+}
+
+/* ---------- 화면: 첫 방문 ---------- */
+function onboarding(){
+  const wrap = h("div", {class:"stack"});
+  wrap.append(h("div", {class:"card"}, h("h2", null, "내 스케줄을 어떤 추천으로 시작할까요?"),
+    h("div", {class:"note"}, "두 분 상황에 맞춘 추천 스케줄을 준비해 두었습니다. 고른 뒤 '내 스케줄'에서 시간과 내용을 마음대로 고치면 됩니다. 상대방 스케줄은 '함께 보기'에서만 보입니다.")));
+  const pick = h("div", {class:"pick"});
+  for (const key of ["husband","wife"]){
+    const t = TEMPLATES[key], d = fromTpl(key);
+    pick.append(h("section", {class:"card"},
+      h("h2", null, t.title, h("span", {class:"chip"}, t.who)),
+      h("ul", null, t.points.map(x => h("li", null, x))),
+      h("div", {class:"row"}, h("span", {class:"chip kind t-study"}, `공부 주 ${hm(plannedStudy(d))}`), h("span", {class:"chip kind t-exercise"}, `운동 목표 주 ${d.weekExN}회`)),
+      h("details", null, h("summary", null, "주간 시간표 미리 보기"), timetable(d.blocks, {compact:true})),
+      h("button", {class:"btn primary", disabled: !S.canWrite, onclick: () => startWith(key)}, "이 추천으로 시작")));
+  }
+  wrap.append(pick);
+  wrap.append(h("div", {class:"row"}, h("button", {class:"btn ghost", disabled: !S.canWrite, onclick: () => { S.draft = {label:"", exam:"", examKey:"", examDate:"", weekStudyH:"", weekExN:"", minStudy:"", minEx:"", blocks:[], alarm: Object.assign({}, ALARM_DEFAULT)}; S.dirty = true; setTab("edit"); }}, "빈 스케줄에서 직접 만들기")));
+  return wrap;
+}
+function startWith(key){
+  const d = fromTpl(key);
+  S.people[S.uid] = d; putProfile(d);
+  toast("추천 스케줄을 넣었습니다. '내 스케줄'에서 고칠 수 있어요"); setTab("today");
+}
+
+/* ---------- 화면: 오늘 ---------- */
+function timeline(pid, p, editable){
+  const d = today(), key = ymd(d), bl = blocksOn(p, d), day = dayDoc(pid, key), nm = nowMin();
+  if (!bl.length) return h("div", {class:"empty"}, "오늘 요일에 등록된 블록이 없습니다.");
+  const ul = h("ol", {class:"tl"});
+  for (const b of bl){
+    const s = day.st && day.st[b.id], cur = nm >= toMin(b.start) && nm < toMin(b.start) + span(b.start, b.end);
+    ul.append(h("li", {class:`t-${b.type}${b.type === "fixed" ? " fixed" : ""}${cur ? " cur" : ""}${s === "done" ? " done" : ""}`},
+      h("div", {class:"tm"}, h("b", null, b.start), b.end),
+      h("div", {class:"bx"},
+        h("div", {class:"row spread"}, h("div", {class:"row"}, h("span", {class:"lab"}, b.label || TYPES[b.type]), b.type !== "fixed" ? kindChip(b.type) : null),
+          h("div", {class:"row"}, cur ? h("span", {class:"chip now"}, "지금") : null, h("span", {class:"note num"}, hm(span(b.start, b.end))))),
+        tracked(b) ? statusCtl(pid, key, b, editable) : null)));
+  }
+  return ul;
+}
+function todaySummary(pid, p, editable){
+  const d = today(), key = ymd(d), day = dayDoc(pid, key), mode = modeFor(pid, key), bl = blocksOn(p, d);
+  const studyB = bl.filter(b => b.type === "study"), exB = bl.filter(b => b.type === "exercise");
+  const plan = studyB.reduce((s,b) => s + span(b.start,b.end), 0);
+  const done = studyB.reduce((s,b) => { const st = day.st && day.st[b.id]; return s + (st === "done" ? span(b.start,b.end) : st === "part" ? span(b.start,b.end)/2 : 0); }, 0);
+  const exDone = exB.some(b => day.st && (day.st[b.id] === "done" || day.st[b.id] === "part"));
+  const card = h("section", {class:"card"});
+  card.append(h("div", {class:"row spread"}, h("h2", null, "오늘 요약"), mode === "min" ? h("span", {class:"chip min"}, "최소 분량 모드") : h("span", {class:"chip"}, "평소대로")));
+  card.append(statCard("공부", hm(done), plan ? hm(plan) : "계획 없음", plan ? Math.round(done/plan*100) : 0, "t-study"));
+  card.append(h("div", {class:"row spread"}, h("span", null, "운동"), h("span", {class:`st ${exDone ? "done" : day.minEx ? "part" : "none"}`}, exDone ? "했음" : day.minEx ? "최소 운동 했음" : exB.length ? "아직" : "오늘은 운동 블록 없음")));
+  const stv = streak(pid, p);
+  card.append(h("div", {class:"row spread"}, h("span", null, "공부 연속 기록"), h("b", {class:"num"}, stv ? `${stv}일째` : "오늘 시작")));
+  if (editable) card.append(h("div", {class:"row"}, h("div", {class:"seg", role:"group", "aria-label":"오늘 모드"},
+    h("button", {"aria-pressed": String(mode === "normal"), onclick: () => setDayField(pid, key, "mode", "normal")}, "평소대로"),
+    h("button", {"aria-pressed": String(mode === "min"), onclick: () => setDayField(pid, key, "mode", "min")}, "야근·약속 있음"))));
+  if (mode === "min"){
+    const ban = h("div", {class:"banner"}, h("div", null, h("strong", null, "오늘은 이것만 하면 성공"), h("br"), h("span", {class:"note"}, "못 한 공부는 밀린 칸으로 넘어가 일요일 예비 시간에 처리합니다. 운동은 넘기지 않습니다.")));
+    const mk = (f, text) => h("label", {class:"check"}, h("input", {type:"checkbox", checked: !!day[f], disabled: !editable, onchange: ev => setDayField(pid, key, f, ev.target.checked)}), text);
+    ban.append(mk("minStudy", "공부: " + (p.minStudy || "최소 공부")), mk("minEx", "운동: " + (p.minEx || "10분 스트레칭")));
+    card.append(ban);
+  }
+  const evs = eventsFor(pid, key);
+  if (evs.length) card.append(h("div", null, h("h3", null, "오늘 일정"), ...evs.map(e => h("div", {class:"row", style:"margin-top:6px"}, h("span", {class:"chip"}, e.type), h("span", {class:"num"}, e.time || ""), h("span", {class:"muted"}, e.memo || "")))));
+  const mod = MODULES[p.examKey];
+  if (mod) card.append(h("div", {class:"info"}, h("b", null, mod.name), " · ", mod.ready ? h("a", {href: mod.path}, "공부하러 가기") : "같은 앱에 연결 예정입니다. 연결되면 푼 문제가 여기 공부 기록에 자동으로 들어옵니다."));
+  return card;
+}
+function todayView(){
+  const p = me(); if (!p) return onboarding();
+  return h("div", {class:"cols"}, todaySummary(S.uid, p, S.canWrite),
+    h("section", {class:"card"}, h("div", {class:"row spread"}, h("h2", null, "오늘 일정표"), h("span", {class:"note"}, "블록마다 완료·일부·못함을 누르세요")), timeline(S.uid, p, S.canWrite)));
+}
+
+/* ---------- 화면: 이번 주 ---------- */
+function weekView(){
+  const p = me(); if (!p) return onboarding();
+  const ref = addDays(today(), 7 * S.weekOff), ws = weekStart(ref), we = addDays(ws, 6), stt = weekStats(S.uid, p, ref);
+  const wrap = h("div", {class:"stack"});
+  wrap.append(h("div", {class:"row spread"},
+    h("div", {class:"row"}, h("button", {class:"btn small", onclick: () => { S.weekOff--; render(false, true); }}, "‹ 이전 주"),
+      h("b", {class:"num"}, `${md(ws)} – ${md(we)}`),
+      h("button", {class:"btn small", onclick: () => { S.weekOff++; render(false, true); }}, "다음 주 ›"),
+      S.weekOff ? h("button", {class:"btn small ghost", onclick: () => { S.weekOff = 0; render(false, true); }}, "이번 주로") : null),
+    legend()));
+  const goal = (Number(p.weekStudyH)||0) * 60;
+  wrap.append(h("div", {class:"stats"},
+    statCard("공부 시간", hm(stt.done), goal ? hm(goal) : "목표 미설정", goal ? Math.round(stt.done/goal*100) : 0, "t-study", `이번 주 계획 ${hm(stt.planned)}`),
+    statCard("운동 횟수", `${stt.exDays}회`, p.weekExN ? `${p.weekExN}회` : "목표 미설정", p.weekExN ? Math.round(stt.exDays/p.weekExN*100) : 0, "t-exercise", "못 한 운동은 넘기지 않고, 월요일에 0회부터 다시 셉니다"),
+    statCard("밀린 칸", hm(stt.backlog), null, null, "", stt.cleared ? `예비 시간에 ${hm(stt.cleared)} 처리함` : "못 한 공부만 쌓이는 곳")));
+  wrap.append(timetable(p.blocks || [], {start: ws, statusOf: (b, d) => { const day = dayDoc(S.uid, ymd(d)); return day.st && day.st[b.id]; }, onPick: (b, d) => blockSheet(S.uid, b, d)}));
+  wrap.append(h("div", {class:"note"}, "시간표의 블록을 누르면 그날 기록을 남기거나 고칠 수 있습니다."));
+  const bl = h("section", {class:"card"}, h("h2", null, "밀린 칸 처리"));
+  if (stt.backlog > 0 && S.canWrite){
+    const inp = h("input", {type:"number", min:"10", step:"10", value: String(Math.min(Math.round(stt.backlog), 120)), "aria-label":"처리한 분", style:"width:7em"});
+    bl.append(h("div", {class:"note"}, `밀린 공부 ${hm(stt.backlog)}. 일요일 예비 시간에 처리한 만큼 입력하세요.`),
+      h("div", {class:"row"}, inp, h("span", null, "분"), h("button", {class:"btn primary small", onclick: () => {
+        const v = Math.max(0, Number(inp.value)||0); if (!v) return;
+        const k = ymd(ws), cur = Object.assign({}, (S.weeks[S.uid]||{})[k]); cur.cleared = (cur.cleared||0) + v;
+        S.weeks[S.uid] = S.weeks[S.uid] || {}; S.weeks[S.uid][k] = cur; refresh(); putWeek(k, cur); toast("밀린 칸을 줄였습니다");
+      }}, "예비 시간에 처리함")));
+  } else bl.append(h("div", {class:"note"}, stt.backlog > 0 ? `밀린 공부 ${hm(stt.backlog)}` : "밀린 칸이 비어 있습니다. 예비 시간은 쉬셔도 됩니다."));
+  const rs = Object.entries(stt.reasons).sort((a,b) => b[1]-a[1]);
+  const rc = h("section", {class:"card"}, h("h2", null, "못 한 사유"), rs.length ? h("div", {class:"row"}, rs.map(([r,n]) => h("span", {class:"chip"}, `${r} ${n}회`))) : h("div", {class:"note"}, "아직 없습니다."),
+    h("div", {class:"note"}, "밀린 칸이 예비 시간보다 자주 넘치면 주간 목표가 높다는 신호입니다. 일요일 점검 때 목표를 낮춰 보세요."));
+  wrap.append(h("div", {class:"cols2"}, bl, rc));
+  return wrap;
+}
+
+/* ---------- 화면: 함께 보기 ---------- */
+function familyCard(){
+  const list = Object.entries(S.people).map(([id,p]) => ({id, label: p.label || "이름 없음"}));
+  const card = h("section", {class:"card"}, h("h2", null, "가족 일정"), h("div", {class:"note"}, "야근·회식·약속을 넣으면 그 사람의 그날은 자동으로 최소 분량 모드가 됩니다. 둘 다 추가·삭제할 수 있습니다."));
+  const fDate = h("input", {type:"date", value: ymd(today())});
+  const fWho = h("select", null, list.map(p => h("option", {value:p.id}, p.id === S.uid ? `${p.label} (나)` : p.label)), h("option", {value:"all"}, "같이"));
+  if (S.uid && S.people[S.uid]) fWho.value = S.uid;
+  const fType = h("select", null, EVTYPES.map(t => h("option", {value:t}, t)));
+  const fTime = h("input", {type:"text", placeholder:"예: 19:00~22:00"});
+  const fMemo = h("input", {type:"text", placeholder:"메모 (선택)"});
+  card.append(h("div", {class:"form"}, h("label", null, "날짜", fDate), h("label", null, "누구", fWho), h("label", null, "종류", fType), h("label", null, "시간", fTime), h("label", {class:"wide"}, "메모", fMemo)));
+  card.append(h("div", {class:"row"}, h("button", {class:"btn primary", disabled: !S.canWrite || !me(), onclick: async () => {
+    if (!fDate.value) return toast("날짜를 골라 주세요");
+    const data = {date: fDate.value, who: fWho.value, type: fType.value, time: fTime.value.trim().slice(0,40), memo: fMemo.value.trim().slice(0,100)};
+    if (S.mode !== "live"){ S.family.push(Object.assign({id: uidGen()}, data)); refresh(); toast("일정을 추가했습니다 (미리보기)"); return; }
+    const {data: row, error} = await S.sb.from("sch_family").insert(data).select().single();
+    if (error) return toast("추가하지 못했습니다. 다시 눌러 주세요.");
+    S.family.push(Object.assign(data, {id: row.id})); refresh(); toast("일정을 추가했습니다");
+  }}, "일정 추가"), !me() ? h("span", {class:"note"}, "먼저 내 스케줄을 만들어 주세요.") : null));
+  const t = ymd(today()), up = S.family.filter(e => e.date >= t).sort((a,b) => (a.date + (a.time||"")).localeCompare(b.date + (b.time||"")));
+  if (!up.length) card.append(h("div", {class:"empty"}, "다가오는 일정이 없습니다."));
+  else {
+    const name = w => w === "all" ? "같이" : ((S.people[w] && S.people[w].label) || "알 수 없음");
+    const tb = h("tbody");
+    for (const e of up) tb.append(h("tr", null, h("td", {class:"num"}, md(parseYmd(e.date))), h("td", null, name(e.who)), h("td", null, h("span", {class:"chip"}, e.type)), h("td", {class:"num"}, e.time || ""), h("td", null, e.memo || ""),
+      h("td", {style:"text-align:right"}, S.canWrite ? h("button", {class:"btn small ghost", "aria-label":"일정 삭제", onclick: async () => {
+        S.family = S.family.filter(x => x.id !== e.id); refresh();
+        if (S.mode === "live"){ const {error} = await S.sb.from("sch_family").delete().eq("id", e.id); if (error){ toast("삭제하지 못했습니다"); scheduleReload(); } }
+      }}, "삭제") : null)));
+    card.append(h("div", {class:"tablewrap"}, h("table", {class:"list"}, h("thead", null, h("tr", null, ["날짜","누구","종류","시간","메모",""].map(x => h("th", null, x)))), tb)));
+  }
+  return card;
+}
+function togetherView(){
+  const wrap = h("div", {class:"stack"}), os = others();
+  if (!os.length) wrap.append(h("div", {class:"card"}, h("h2", null, "배우자 스케줄"), h("div", {class:"empty"}, "배우자분이 아직 스케줄을 만들지 않았습니다. 배우자분이 이 앱에서 가입하고 추천 스케줄을 고르면 여기에 나타납니다.")));
+  else {
+    if (!S.partner || !S.people[S.partner] || S.partner === S.uid) S.partner = os[0].id;
+    const p = Object.assign({id:S.partner}, S.people[S.partner]), ws = weekStart(today()), stt = weekStats(p.id, p, today()), dd = dday(p);
+    if (os.length > 1) wrap.append(h("div", {class:"row"}, os.map(o => h("button", {class:`btn small${o.id === S.partner ? " primary" : ""}`, onclick: () => { S.partner = o.id; render(false, true); }}, o.label || "이름 없음"))));
+    wrap.append(h("div", {class:"row"}, h("h2", {style:"margin:0;font-size:1.05rem"}, `${p.label || "배우자"}의 스케줄`), p.exam ? h("span", {class:"chip"}, p.exam) : null, dd ? h("span", {class:"chip acc num"}, dd) : null, h("span", {class:"note"}, "보기 전용")));
+    const goal = (Number(p.weekStudyH)||0) * 60;
+    wrap.append(h("div", {class:"stats"},
+      statCard("이번 주 공부", hm(stt.done), goal ? hm(goal) : "목표 미설정", goal ? Math.round(stt.done/goal*100) : 0, "t-study"),
+      statCard("이번 주 운동", `${stt.exDays}회`, p.weekExN ? `${p.weekExN}회` : "목표 미설정", p.weekExN ? Math.round(stt.exDays/p.weekExN*100) : 0, "t-exercise"),
+      statCard("오늘 모드", modeFor(p.id, ymd(today())) === "min" ? "최소 분량" : "평소대로", null, null, "", "야근·약속이 있으면 최소 분량으로 바뀝니다")));
+    wrap.append(h("div", {class:"cols"},
+      h("section", {class:"card"}, h("h2", null, "오늘"), timeline(p.id, p, false)),
+      h("section", {class:"card"}, h("h2", null, "이번 주 시간표"), timetable(p.blocks || [], {start: ws, statusOf: (b, d) => { const day = dayDoc(p.id, ymd(d)); return day.st && day.st[b.id]; }, onPick: (b, d) => blockSheet(p.id, b, d)}))));
+  }
+  wrap.append(familyCard());
+  return wrap;
+}
+
+/* ---------- 화면: 내 스케줄 편집 ---------- */
+function editView(){
+  if (!S.draft){ if (!me()) return onboarding(); S.draft = clone(me()); S.dirty = false; }
+  const D = S.draft; D.blocks = D.blocks || [];
+  const wrap = h("div", {class:"stack"});
+  const bind = (f, attrs) => h("input", Object.assign({value: D[f] == null ? "" : String(D[f]), oninput: ev => { D[f] = ev.target.value; if (!S.dirty){ S.dirty = true; showSavebar(); } }}, attrs));
+  const examSel = h("select", {onchange: ev => { D.examKey = ev.target.value; if (!S.dirty){ S.dirty = true; showSavebar(); } }},
+    h("option", {value:""}, "연결 안 함"), Object.entries(MODULES).map(([k,m]) => { const o = h("option", {value:k}, m.name); if (D.examKey === k) o.selected = true; return o; }));
+  wrap.append(h("section", {class:"card"}, h("h2", null, "기본 정보"),
+    h("div", {class:"form"},
+      h("label", null, "표시 이름", bind("label", {type:"text", placeholder:"예: 남편"})),
+      h("label", null, "준비하는 시험", bind("exam", {type:"text", placeholder:"예: 전기기사"})),
+      h("label", null, "시험일 (D-day)", bind("examDate", {type:"date"})),
+      h("label", null, "주간 공부 목표 (시간)", bind("weekStudyH", {type:"number", min:"0", step:"1"})),
+      h("label", null, "주간 운동 목표 (회)", bind("weekExN", {type:"number", min:"0", step:"1"})),
+      h("label", null, "공부 도우미 연결", examSel),
+      h("label", {class:"wide"}, "최소 공부 (야근·약속 날 이것만)", bind("minStudy", {type:"text"})),
+      h("label", {class:"wide"}, "최소 운동", bind("minEx", {type:"text"})))));
+
+  const plan = plannedStudy(D), goal = (Number(D.weekStudyH)||0) * 60;
+  wrap.append(h("section", {class:"card"},
+    h("div", {class:"row spread"}, h("h2", null, "주간 시간표"),
+      h("div", {class:"row"}, h("span", {class:"chip kind t-study num"}, `공부 계획 주 ${hm(plan)}${goal ? ` / 목표 ${hm(goal)}` : ""}`),
+        h("button", {class:"btn small primary", onclick: () => { S.editId = "new"; render(false, true); scrollEditor(); }}, "+ 블록 추가"))),
+    legend(),
+    timetable(D.blocks, {onPick: b => { S.editId = b.id; render(false, true); scrollEditor(); }, selected: S.editId, editFixed: true}),
+    h("div", {class:"note"}, "블록을 누르면 아래에서 고칠 수 있습니다. 근무·출퇴근 같은 고정 일정은 빗금으로 표시되고 기록·알림 대상이 아닙니다.")));
+
+  if (S.editId){
+    const isNew = S.editId === "new", b = isNew ? {days:[1,2,3,4,5], start:"20:00", end:"21:00", type:"study", label:""} : D.blocks.find(x => x.id === S.editId);
+    if (b){
+      const dayBoxes = {}; ORDER.forEach(i => dayBoxes[i] = h("input", {type:"checkbox", checked: b.days.includes(i)}));
+      const fS = h("input", {type:"time", value:b.start}), fE = h("input", {type:"time", value:b.end});
+      const fT = h("select", null, Object.entries(TYPES).map(([k,v]) => { const o = h("option", {value:k}, v); if (k === b.type) o.selected = true; return o; }));
+      const fL = h("input", {type:"text", value:b.label || "", placeholder:"예: 기출 풀이"});
+      wrap.append(h("section", {class:"card", id:"blockEditor", style:"border-color:var(--accent);border-width:2px"},
+        h("div", {class:"row spread"}, h("h2", null, isNew ? "새 블록" : "블록 고치기"), h("button", {class:"btn small ghost", onclick: () => { S.editId = null; render(false, true); }}, "닫기")),
+        h("div", {class:"form"},
+          h("label", {class:"wide"}, "요일", h("div", {class:"daypick"}, ORDER.map(i => h("label", null, dayBoxes[i], DAYS[i])))),
+          h("label", null, "시작", fS), h("label", null, "끝", fE), h("label", null, "종류", fT), h("label", null, "내용", fL)),
+        h("div", {class:"row"},
+          h("button", {class:"btn primary", onclick: () => {
+            const days = ORDER.filter(i => dayBoxes[i].checked);
+            if (!days.length) return toast("요일을 하나 이상 골라 주세요");
+            if (!fS.value || !fE.value) return toast("시간을 입력해 주세요");
+            const nb = {id: isNew ? uidGen() : b.id, days, start: fS.value, end: fE.value, type: fT.value, label: fL.value.trim().slice(0,40)};
+            D.blocks = isNew ? D.blocks.concat(nb) : D.blocks.map(x => x.id === b.id ? nb : x);
+            S.editId = nb.id; S.dirty = true; render(false, true); toast("시간표에 반영했습니다. 아래 '저장'을 눌러야 저장됩니다");
+          }}, isNew ? "추가" : "반영"),
+          !isNew ? h("button", {class:"btn", onclick: () => { const nb = Object.assign(clone(b), {id: uidGen()}); D.blocks = D.blocks.concat(nb); S.editId = nb.id; S.dirty = true; render(false, true); toast("복제했습니다. 요일이나 시간을 바꿔 주세요"); }}, "복제") : null,
+          !isNew ? h("button", {class:"btn ghost", style:"color:var(--warn)", onclick: () => { D.blocks = D.blocks.filter(x => x.id !== b.id); S.editId = null; S.dirty = true; render(false, true); }}, "삭제") : null)));
+    }
+  }
+
+  const tplCard = h("section", {class:"card"}, h("h2", null, "추천 스케줄 다시 불러오기"), h("div", {class:"note"}, "현재 시간표를 추천 스케줄로 통째로 바꿉니다. 기본 정보는 그대로 둡니다."));
+  if (S.confirmTpl) tplCard.append(h("div", {class:"banner"}, h("div", null, h("strong", null, `'${TEMPLATES[S.confirmTpl].title}' 추천으로 바꿀까요?`), " 지금 시간표의 블록이 모두 바뀝니다."),
+    h("div", {class:"row"}, h("button", {class:"btn warn small", onclick: () => { D.blocks = fromTpl(S.confirmTpl).blocks; S.confirmTpl = null; S.editId = null; S.dirty = true; render(false, true); }}, "바꾸기"),
+      h("button", {class:"btn small", onclick: () => { S.confirmTpl = null; render(false, true); }}, "취소"))));
+  else tplCard.append(h("div", {class:"row"}, ["husband","wife"].map(k => h("button", {class:"btn small", onclick: () => { S.confirmTpl = k; render(false, true); }}, TEMPLATES[k].title))));
+  wrap.append(tplCard);
+
+  wrap.append(h("div", {class:"savebar", id:"savebar", hidden: !S.dirty},
+    h("span", null, "저장하지 않은 변경이 있습니다"),
+    h("div", {class:"row"}, h("button", {class:"btn small", onclick: () => { S.draft = null; S.dirty = false; S.editId = null; render(false, true); }}, "되돌리기"),
+      h("button", {class:"btn small primary", disabled: !S.canWrite, onclick: saveProfile}, "저장"))));
+  return wrap;
+}
+function scrollEditor(){ setTimeout(() => { const f = document.getElementById("blockEditor"); if (f) f.scrollIntoView({behavior:"smooth", block:"nearest"}); }, 0); }
+function showSavebar(){ const b = document.getElementById("savebar"); if (b) b.hidden = false; }
+async function saveProfile(){
+  const D = S.draft, cur = me() || {};
+  if (!String(D.label||"").trim()) return toast("표시 이름을 입력해 주세요");
+  const data = {role: D.role || "custom", label: String(D.label).trim().slice(0,20), exam: String(D.exam||"").trim().slice(0,30), examKey: D.examKey || "", examDate: D.examDate || "",
+    weekStudyH: Number(D.weekStudyH)||0, weekExN: Number(D.weekExN)||0, minStudy: String(D.minStudy||"").trim().slice(0,60), minEx: String(D.minEx||"").trim().slice(0,60),
+    blocks: D.blocks || [], alarm: Object.assign({}, ALARM_DEFAULT, cur.alarm || D.alarm || {})};
+  S.people[S.uid] = data; S.draft = null; S.dirty = false; S.editId = null;
+  await putProfile(data);
+  toast(S.mode === "live" ? "저장했습니다. 알림도 새 시간표대로 옵니다" : "반영했습니다 (미리보기라 저장되지는 않습니다)"); render(false, true);
+}
+
+/* ---------- 화면: 알림·설정 ---------- */
+const pushSupported = () => "serviceWorker" in navigator && "PushManager" in window && "Notification" in window;
+const isIOS = /iphone|ipad|ipod/i.test(navigator.userAgent) || (navigator.platform === "MacIntel" && navigator.maxTouchPoints > 1);
+const isStandalone = () => matchMedia("(display-mode: standalone)").matches || navigator.standalone === true;
+function b64ToU8(s){ const p = "=".repeat((4 - s.length % 4) % 4), b = atob((s + p).replace(/-/g, "+").replace(/_/g, "/")); return Uint8Array.from(b, c => c.charCodeAt(0)); }
+async function refreshPushState(){
+  try { const reg = pushSupported() && await navigator.serviceWorker.getRegistration(); const sub = reg && await reg.pushManager.getSubscription(); S.pushOn = !!sub; } catch { S.pushOn = false; }
+  if (S.tab === "alarm") render(false, true);
+}
+async function enablePush(){
+  if (!pushSupported()) return toast(isIOS ? "아이폰은 홈 화면에 추가한 앱에서만 알림을 켤 수 있습니다." : "이 브라우저는 알림을 지원하지 않습니다.");
+  const perm = await Notification.requestPermission();
+  if (perm !== "granted") return toast("알림이 허용되지 않았습니다. 휴대폰 설정에서 이 앱의 알림을 켜 주세요.");
+  try {
+    const reg = await navigator.serviceWorker.ready;
+    const {data, error} = await S.sb.functions.invoke("notify", {body:{action:"vapid"}});
+    if (error || !data || !data.publicKey) throw error || new Error("no key");
+    const sub = await reg.pushManager.subscribe({userVisibleOnly: true, applicationServerKey: b64ToU8(data.publicKey)});
+    const j = sub.toJSON();
+    const r = await S.sb.from("push_subs").upsert({user_id: S.uid, endpoint: j.endpoint, p256dh: j.keys.p256dh, auth: j.keys.auth, ua: navigator.userAgent.slice(0,200)}, {onConflict: "endpoint"});
+    if (r.error) throw r.error;
+    S.pushOn = true; render(false, true); toast("이 기기에서 알림을 켰습니다");
+  } catch (e) { console.error(e); toast("알림을 켜지 못했습니다. 잠시 후 다시 시도해 주세요."); }
+}
+async function disablePush(){
+  try {
+    const reg = await navigator.serviceWorker.getRegistration(), sub = reg && await reg.pushManager.getSubscription();
+    if (sub){ await S.sb.from("push_subs").delete().eq("endpoint", sub.endpoint); await sub.unsubscribe(); }
+    S.pushOn = false; render(false, true); toast("이 기기 알림을 껐습니다");
+  } catch (e) { toast("알림을 끄지 못했습니다"); }
+}
+async function testPush(){
+  const {data, error} = await S.sb.functions.invoke("notify", {body:{action:"test"}});
+  toast(error ? "테스트 알림을 보내지 못했습니다" : `테스트 알림을 보냈습니다 (기기 ${data && data.sent || 0}대)`);
+}
+function updateAlarm(patch){
+  const p = me(); if (!p) return;
+  p.alarm = Object.assign({}, ALARM_DEFAULT, p.alarm || {}, patch);
+  if (S.draft) S.draft.alarm = clone(p.alarm);
+  putProfile(p); render(false, true);
+}
+function alarmView(){
+  const p = me(); if (!p) return onboarding();
+  const a = Object.assign({}, ALARM_DEFAULT, p.alarm || {}), live = S.mode === "live";
+  const wrap = h("div", {class:"stack"});
+  const dev = h("section", {class:"card"}, h("div", {class:"row spread"}, h("h2", null, "이 기기 알림"), S.pushOn ? h("span", {class:"chip ok"}, "켜짐") : h("span", {class:"chip"}, "꺼짐")),
+    h("div", {class:"note"}, "알림은 내 시간표 기준으로 내 기기에만 옵니다. 휴대폰과 PC 등 기기마다 한 번씩 켜 주세요."));
+  if (!live) dev.append(h("div", {class:"info"}, "미리보기에서는 알림을 켤 수 없습니다. 실제 주소에서 로그인하면 켤 수 있습니다."));
+  else if (isIOS && !isStandalone()) dev.append(h("div", {class:"banner"}, h("div", null, h("strong", null, "아이폰은 먼저 홈 화면에 추가해야 합니다."), h("br"), "Safari 아래 공유 버튼 → '홈 화면에 추가' → 홈 화면의 '갓생살기' 아이콘으로 열고 여기서 알림을 켜 주세요. (iOS 16.4 이상)")));
+  else if (!pushSupported()) dev.append(h("div", {class:"banner"}, h("div", null, "이 브라우저는 웹 알림을 지원하지 않습니다. 크롬이나 삼성 인터넷으로 열어 주세요.")));
+  else dev.append(h("div", {class:"row"},
+    S.pushOn ? h("button", {class:"btn", onclick: disablePush}, "이 기기 알림 끄기") : h("button", {class:"btn primary", onclick: enablePush}, "이 기기에서 알림 켜기"),
+    S.pushOn ? h("button", {class:"btn", onclick: testPush}, "테스트 알림 보내기") : null));
+  wrap.append(dev);
+
+  const sw = (on, fn, label) => h("label", {class:"switch"}, h("input", {type:"checkbox", checked: on, "aria-label": label, onchange: ev => fn(ev.target.checked)}), h("span"));
+  const sel = (val, opts, fn, label) => h("select", {"aria-label": label, onchange: ev => fn(ev.target.value)}, opts.map(([v,t]) => { const o = h("option", {value:v}, t); if (String(val) === String(v)) o.selected = true; return o; }));
+  const tm = (val, fn, label) => h("input", {type:"time", value: val, "aria-label": label, onchange: ev => ev.target.value && fn(ev.target.value)});
+  wrap.append(h("section", {class:"card"}, h("h2", null, "알림 종류"),
+    h("div", {class:"setrow"}, h("div", {class:"lbl"}, h("b", null, "블록 시작 알림"), h("span", {class:"note"}, "공부·운동·집안일 블록이 시작되기 전에 알려 줍니다. 야근 날에는 최소 분량으로 안내합니다.")),
+      h("div", {class:"ctl"}, sel(a.blockBefore, [[0,"정각"],[5,"5분 전"],[10,"10분 전"],[15,"15분 전"],[30,"30분 전"]], v => updateAlarm({blockBefore: Number(v)}), "몇 분 전"), sw(a.blockOn, v => updateAlarm({blockOn: v}), "블록 시작 알림"))),
+    h("div", {class:"setrow"}, h("div", {class:"lbl"}, h("b", null, "저녁 기록 알림"), h("span", {class:"note"}, "오늘 기록하지 않은 블록이 남아 있을 때만 옵니다.")),
+      h("div", {class:"ctl"}, tm(a.eveningAt, v => updateAlarm({eveningAt: v}), "저녁 기록 알림 시각"), sw(a.eveningOn, v => updateAlarm({eveningOn: v}), "저녁 기록 알림"))),
+    h("div", {class:"setrow"}, h("div", {class:"lbl"}, h("b", null, "일요일 주간 점검 알림"), h("span", {class:"note"}, "이번 주 공부 시간·운동 횟수·밀린 칸을 알려 줍니다.")),
+      h("div", {class:"ctl"}, tm(a.sundayAt, v => updateAlarm({sundayAt: v}), "주간 점검 알림 시각"), sw(a.sundayOn, v => updateAlarm({sundayOn: v}), "일요일 주간 점검 알림")))));
+
+  const inst = h("section", {class:"card"}, h("h2", null, "앱으로 설치"));
+  if (isStandalone()) inst.append(h("div", {class:"note"}, "앱으로 설치되어 실행 중입니다."));
+  else {
+    if (S.installEvt) inst.append(h("button", {class:"btn primary", onclick: async () => { S.installEvt.prompt(); await S.installEvt.userChoice; S.installEvt = null; render(false, true); }}, "홈 화면에 설치"));
+    inst.append(h("ul", {class:"note", style:"margin:0;padding-left:18px"},
+      h("li", null, "안드로이드: 크롬 메뉴(⋮) → '홈 화면에 추가' 또는 '앱 설치'"),
+      h("li", null, "아이폰: Safari 공유 버튼 → '홈 화면에 추가'")));
+  }
+  wrap.append(inst);
+  wrap.append(h("section", {class:"card"}, h("h2", null, "계정"),
+    h("div", {class:"row spread"}, h("span", null, live ? S.email : "미리보기 (로그인 안 함)"),
+      live ? h("button", {class:"btn", onclick: async () => { await disablePush().catch(() => {}); await S.sb.auth.signOut(); location.reload(); }}, "로그아웃") : (S.sb ? h("a", {class:"btn", href:"./"}, "로그인하러 가기") : null))));
+  return wrap;
+}
+
+/* ---------- 렌더 ---------- */
+function header(){
+  const w = document.getElementById("who"); w.replaceChildren();
+  const p = me();
+  if (p){ w.append(h("span", {class:"chip acc"}, p.label || "나")); if (p.exam) w.append(h("span", {class:"chip"}, p.exam)); const dd = dday(p); w.append(h("span", {class:dd ? "chip acc num" : "chip"}, dd || "시험일 미입력")); }
+  if (S.installEvt && !isStandalone()) w.append(h("button", {class:"btn small primary", onclick: () => setTab("alarm")}, "앱 설치"));
+  document.getElementById("demoBanner").hidden = S.mode !== "demo";
+  document.getElementById("tabs").hidden = !(S.mode === "live" || S.mode === "demo");
+}
+function render(fromData, force){
+  if (fromData && S.tab === "edit" && S.draft && !force) return;
+  header();
+  const main = document.getElementById("main");
+  if (S.mode === "loading") return;
+  if (S.mode === "login") return main.replaceChildren(loginView());
+  if (S.mode === "nolib") return main.replaceChildren(h("div", {class:"empty"}, "인터넷에 연결되어 있지 않아 불러오지 못했습니다. 연결 후 다시 열어 주세요."));
+  main.replaceChildren(S.tab === "today" ? todayView() : S.tab === "week" ? weekView() : S.tab === "together" ? togetherView() : S.tab === "edit" ? editView() : alarmView());
+}
+function setTab(t){
+  if (S.tab === "edit" && t !== "edit" && S.dirty) toast("편집 중인 변경은 '내 스케줄'에 그대로 남아 있습니다");
+  S.tab = t;
+  document.querySelectorAll("nav.tabs button").forEach(b => b.setAttribute("aria-selected", String(b.dataset.tab === t)));
+  render(false, true); window.scrollTo({top:0});
+}
+document.querySelectorAll("nav.tabs button").forEach(b => b.addEventListener("click", () => setTab(b.dataset.tab)));
+{ const ht = (location.hash || "").slice(1); if (["today","week","together","edit","alarm"].includes(ht)){ S.tab = ht; document.querySelectorAll("nav.tabs button").forEach(b => b.setAttribute("aria-selected", String(b.dataset.tab === ht))); } }
+const td = today(); document.getElementById("dateLabel").textContent = `${td.getFullYear()}년 ${td.getMonth()+1}월 ${td.getDate()}일 ${DAYS[td.getDay()]}요일`;
+window.addEventListener("beforeinstallprompt", e => { e.preventDefault(); S.installEvt = e; header(); });
+if ("serviceWorker" in navigator && /^https?:$/.test(location.protocol)) navigator.serviceWorker.register("sw.js").catch(() => {});
+document.addEventListener("visibilitychange", () => { if (document.visibilityState === "visible" && S.mode === "live"){ scheduleReload(); } });
+
+/* ---------- 미리보기(데모) ---------- */
+function startDemo(){
+  S.mode = "demo"; S.uid = "demo-me"; S.canWrite = true;
+  S.people = {"demo-me": fromTpl("husband"), "demo-wife": fromTpl("wife")};
+  const ws = weekStart(today()), tk = ymd(today());
+  for (const [id, p] of Object.entries(S.people)){
+    S.days[id] = {};
+    for (let i = 0; i < 7; i++){
+      const d = addDays(ws, i), key = ymd(d); if (key >= tk) break;
+      const cur = {date:key, st:{}, why:{}};
+      blocksOn(p, d).filter(tracked).forEach((b, j) => {
+        if (b.type === "chores"){ cur.st[b.id] = "done"; return; }
+        if (id === "demo-me" && d.getDay() === 2 && b.start === "20:30"){ cur.st[b.id] = "skip"; cur.why[b.id] = "야근"; cur.mode = "min"; cur.minStudy = true; return; }
+        if ((i + j) % 6 === 3){ cur.st[b.id] = "part"; cur.why[b.id] = id === "demo-me" ? "컨디션" : "집안일"; return; }
+        cur.st[b.id] = "done";
+      });
+      S.days[id][key] = cur;
+    }
+  }
+  const thu = ymd(addDays(ws, 3)), sun = ymd(addDays(ws, 6));
+  S.family = [
+    {id:"e1", date: thu >= tk ? thu : ymd(addDays(ws, 10)), who:"demo-me", type:"회식", time:"18:30~", memo:"팀 회식"},
+    {id:"e2", date: sun, who:"all", type:"가족 행사", time:"12:00", memo:"부모님 댁 점심"},
+    {id:"e3", date: ymd(addDays(ws, 8)), who:"demo-wife", type:"병원·장보기", time:"10:00", memo:"정기 검진"}
+  ];
+  render(false, true);
+}
+
+/* ---------- 시작 ---------- */
+async function startLive(user){
+  S.uid = user.id; S.email = user.email || ""; S.canWrite = true; S.mode = "loading"; render(false, true);
+  try { await loadAll(); } catch (e) { console.error(e); toast("불러오지 못했습니다. 새로고침해 주세요."); }
+  S.mode = "live"; render(false, true);
+  S.sb.channel("household")
+    .on("postgres_changes", {event:"*", schema:"public", table:"profiles"}, scheduleReload)
+    .on("postgres_changes", {event:"*", schema:"public", table:"sch_days"}, scheduleReload)
+    .on("postgres_changes", {event:"*", schema:"public", table:"sch_weeks"}, scheduleReload)
+    .on("postgres_changes", {event:"*", schema:"public", table:"sch_family"}, scheduleReload)
+    .subscribe();
+  refreshPushState();
+}
+(async () => {
+  const wantDemo = /[?&]demo\b/.test(location.search) || !CFG.supabaseUrl || !CFG.supabaseAnonKey;
+  if (wantDemo){ if (window.supabase && CFG.supabaseUrl && CFG.supabaseAnonKey) S.sb = true; return startDemo(); }
+  if (!window.supabase){ S.mode = "nolib"; return render(false, true); }
+  S.sb = window.supabase.createClient(CFG.supabaseUrl, CFG.supabaseAnonKey);
+  const {data: {session}} = await S.sb.auth.getSession();
+  if (!session){ S.mode = "login"; render(false, true); }
+  else await startLive(session.user);
+  S.sb.auth.onAuthStateChange((ev, ses) => { if (ev === "SIGNED_OUT") location.reload(); });
+})();
+})();
+</script>
+</body>
+</html>
