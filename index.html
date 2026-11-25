@@ -179,6 +179,9 @@ details[open] summary{margin-bottom:8px}
 @keyframes sk{to{background-position:-200% 0}}
 nav.tabs .ls{display:none}
 .studyframe{display:block;width:100%;height:calc(100dvh - 250px);min-height:520px;border:1px solid var(--line);border-radius:14px;background:#fff}
+/* 공부 탭: 갓생살기 탭 줄을 접고 '← 갓생살기' 버튼만 (메뉴 두 줄 방지) */
+body.studying nav.tabs{display:none!important}
+body.studying .studyframe{height:calc(100dvh - 190px)}
 /* 휴대폰: 탭을 화면 아래 고정 (앱처럼) */
 @media (max-width:560px){
   nav.tabs{position:fixed;left:0;right:0;bottom:0;z-index:20;border-radius:0;gap:2px;background:var(--surface);border-top:1px solid var(--line);
@@ -186,6 +189,7 @@ nav.tabs .ls{display:none}
   nav.tabs button{flex:1 1 0;min-width:0;padding:10px 2px;font-size:.8rem}
   nav.tabs .lf{display:none} nav.tabs .ls{display:inline}
   .studyframe{height:calc(100dvh - 230px - env(safe-area-inset-bottom,0px))}
+  body.studying .studyframe{height:calc(100dvh - 160px - env(safe-area-inset-bottom,0px))}
   nav.tabs button[aria-selected="true"]{background:var(--accent-soft);color:var(--accent);box-shadow:none}
   .savebar{bottom:calc(70px + env(safe-area-inset-bottom,0px))}
   .toast{bottom:calc(76px + env(safe-area-inset-bottom,0px))}
@@ -227,7 +231,7 @@ const W = [1,2,3,4,5];
 const ALARM_DEFAULT = {blockOn:true, blockBefore:10, eveningOn:true, eveningAt:"22:00", sundayOn:true, sundayAt:"20:00"};
 /* 공부 모듈: 프로필의 examKey로 연결. 같은 주소 아래 하위 페이지로 붙이면 로그인이 그대로 이어짐 */
 const MODULES = {
-  civil9: {name:"사복직 합격노트", who:"아내 · 9급 사회복지직", url:"https://sw9note-2f913ee331.netlify.app/", ready:true},
+  civil9: {name:"사복직 합격노트", who:"아내 · 9급 사회복지직", url:"https://sw9note-2f913ee331.netlify.app/?embed=godlife", origin:"https://sw9note-2f913ee331.netlify.app", ready:true},
   elec:   {name:"전기기사 도우미", who:"남편 · 전기기사", url:"", ready:false}
 };
 
@@ -286,7 +290,7 @@ const fromTpl = key => { const d = JSON.parse(JSON.stringify(TEMPLATES[key].data
 
 const CFG = window.APP_CONFIG || {};
 const S = { mode:"loading", sb:null, uid:null, email:"", canWrite:false, people:{}, days:{}, weeks:{}, family:[], tab:"today",
-  weekOff:0, draft:null, dirty:false, editId:null, partner:null, sheetFn:null, confirmTpl:null, pushOn:false, installEvt:null, loginMsg:"", loginErr:"" };
+  weekOff:0, draft:null, dirty:false, editId:null, partner:null, sheetFn:null, confirmTpl:null, pushOn:false, installEvt:null, loginMsg:"", loginErr:"", slog:[] };
 
 /* ---------- helpers ---------- */
 const pad = n => String(n).padStart(2,"0");
@@ -348,6 +352,33 @@ async function loadAll(){
   const weeks = {}; w.data.forEach(r => { (weeks[r.user_id] = weeks[r.user_id] || {})[r.week_start] = {cleared: r.cleared || 0}; });
   S.people = people; S.days = days; S.weeks = weeks;
   S.family = f.data.map(r => ({id: r.id, date: r.date, who: r.who, type: r.type, time: r.time || "", memo: r.memo || ""}));
+  await loadStudyLog(since);
+}
+/* 공부 도우미(합격노트) 순공 기록: 본인 것만 읽음 (배우자 기록은 RLS로도 막힘) */
+async function loadStudyLog(since){
+  if (!S.uid || S.mode === "demo") return;
+  const r = await S.sb.from("study_log").select("date,minutes,started_at,module").eq("user_id", S.uid).gte("date", since);
+  S.slog = r.error ? [] : r.data.filter(x => x.minutes > 0);
+  autoDoneFromLog();
+}
+const logsOn = key => S.slog.filter(x => x.date === key);
+// 세션이 겹치는 공부 블록 찾기 (그날 시각 기준, 분 단위)
+function sessRange(x){ if (!x.started_at) return null; const t = new Date(x.started_at); const a = t.getHours()*60 + t.getMinutes(); return [a, a + x.minutes]; }
+function overlapBlocks(p, d, x){ const r = sessRange(x); if (!r) return []; return blocksOn(p, d).filter(b => b.type === "study" && r[0] < toMin(b.start) + span(b.start, b.end) && r[1] > toMin(b.start)); }
+// 공부 블록과 겹치지 않는 순공(계획 밖 공부)만 따로 더함: 블록과 겹친 시간은 블록 완료로 이미 셈
+function extraStudy(id, p, d){ if (id !== S.uid) return 0; return logsOn(ymd(d)).filter(x => !overlapBlocks(p, d, x).length).reduce((s,x) => s + x.minutes, 0); }
+const noteMin = (id, key) => id === S.uid ? logsOn(key).reduce((s,x) => s + x.minutes, 0) : 0;
+// 순공 세션과 겹친 공부 블록을 자동 '완료' (한 번 자동 처리한 블록은 다시 건드리지 않음 → 직접 바꾼 상태 유지)
+function autoDoneFromLog(){
+  const p = me(); if (!p || !S.canWrite) return;
+  for (let i = 0; i < 7; i++){
+    const d = addDays(today(), -i), key = ymd(d); const hit = new Set();
+    logsOn(key).forEach(x => overlapBlocks(p, d, x).forEach(b => hit.add(b.id)));
+    if (!hit.size) continue;
+    const cur = clone(dayDoc(S.uid, key)); cur.st = cur.st || {}; cur.auto = cur.auto || {}; let ch = false;
+    for (const bid of hit){ if (cur.auto[bid]) continue; cur.auto[bid] = true; ch = true; if (!cur.st[bid]) cur.st[bid] = "done"; }
+    if (ch){ cur.date = key; S.days[S.uid] = S.days[S.uid] || {}; S.days[S.uid][key] = cur; putDay(key, cur); }
+  }
 }
 let reloadT;
 function scheduleReload(){ clearTimeout(reloadT); reloadT = setTimeout(async () => { try { await loadAll(); render(true); } catch (e) { console.error(e); } }, 400); }
@@ -381,6 +412,7 @@ function weekStats(id, p, ref){
       if ((s === "skip" || s === "part") && day.why && day.why[b.id]) reasons[day.why[b.id]] = (reasons[day.why[b.id]]||0) + 1;
     }
     if (ex) exDays++;
+    done += extraStudy(id, p, d);
   }
   const wk = (S.weeks[id] && S.weeks[id][ymd(ws)]) || {};
   const cleared = Math.min(wk.cleared || 0, backlog);
@@ -570,9 +602,11 @@ function todaySummary(pid, p, editable){
   const plan = studyB.reduce((s,b) => s + span(b.start,b.end), 0);
   const done = studyB.reduce((s,b) => { const st = day.st && day.st[b.id]; return s + (st === "done" ? span(b.start,b.end) : st === "part" ? span(b.start,b.end)/2 : 0); }, 0);
   const exDone = exB.some(b => day.st && (day.st[b.id] === "done" || day.st[b.id] === "part"));
+  const done2 = done + extraStudy(pid, p, d), nmin = noteMin(pid, key);
   const card = h("section", {class:"card"});
   card.append(h("div", {class:"row spread"}, h("h2", null, "오늘 요약"), mode === "min" ? h("span", {class:"chip min"}, "최소 분량 모드") : h("span", {class:"chip"}, "평소대로")));
-  card.append(statCard("공부", hm(done), plan ? hm(plan) : "계획 없음", plan ? Math.round(done/plan*100) : 0, "t-study"));
+  card.append(statCard("공부", hm(done2), plan ? hm(plan) : "계획 없음", plan ? Math.round(done2/plan*100) : 0, "t-study"));
+  if (nmin) card.append(h("div", {class:"row spread"}, h("span", null, "합격노트 순공"), h("b", {class:"num"}, hm(nmin))));
   card.append(h("div", {class:"row spread"}, h("span", null, "운동"), h("span", {class:`st ${exDone ? "done" : day.minEx ? "part" : "none"}`}, exDone ? "했음" : day.minEx ? "최소 운동 했음" : exB.length ? "아직" : "오늘은 운동 블록 없음")));
   const stv = streak(pid, p);
   card.append(h("div", {class:"row spread"}, h("span", null, "공부 연속 기록"), h("b", {class:"num"}, stv ? `${stv}일째` : "오늘 시작")));
@@ -857,13 +891,14 @@ function studyView(){
   const mine = MODULES[p.examKey], key = S.studyPreview || p.examKey, mod = MODULES[key];
   const wrap = h("div", {class:"stack", style:"gap:10px"});
   if (mod && mod.ready){
+    document.body.classList.add("studying");
     wrap.append(h("div", {class:"row spread"},
-      h("div", {class:"row"}, h("b", null, mod.name), h("span", {class:"chip"}, mod.who), key !== p.examKey ? h("span", {class:"chip min"}, "미리 보기") : null),
+      h("div", {class:"row"}, h("button", {class:"btn small", onclick: () => setTab("today")}, "← 갓생살기"), h("b", null, mod.name), h("span", {class:"chip"}, mod.who), key !== p.examKey ? h("span", {class:"chip min"}, "미리 보기") : null),
       h("div", {class:"row"},
         key !== p.examKey ? h("button", {class:"btn small ghost", onclick: () => { S.studyPreview = null; render(false, true); }}, "닫기") : null,
         h("a", {class:"btn small", href: mod.url, target:"_blank", rel:"noopener"}, "새 창으로 열기 ↗"))));
     wrap.append(h("iframe", {id:"studyFrame", class:"studyframe", src: mod.url, title: mod.name, "data-url": mod.url, allow:"clipboard-write"}));
-    wrap.append(h("div", {class:"note"}, "지금은 화면만 연결된 상태입니다. 푼 기록·순공시간은 아직 합격노트 쪽에만 저장되고, 갓생살기 공부 기록과 자동으로 합쳐지는 건 다음 단계입니다."));
+    wrap.append(h("div", {class:"note"}, "갓생살기 로그인이 합격노트에 그대로 이어져 기록이 서버에 백업됩니다. 합격노트에서 ▶ 공부 시작~멈춤으로 잰 순공시간은 오늘 공부 시간에 더해지고, 겹치는 공부 블록은 자동으로 '완료'가 됩니다. 공부 기록은 본인만 볼 수 있습니다."));
     return wrap;
   }
   wrap.append(h("section", {class:"card"},
@@ -913,6 +948,7 @@ function header(){
 }
 function render(fromData, force){
   if (fromData && S.tab === "edit" && S.draft && !force) return;
+  document.body.classList.remove("studying");   // 공부 도우미 화면을 띄울 때만 studyView가 다시 켬
   header();
   const main = document.getElementById("main");
   if (S.mode === "loading") return;
@@ -923,6 +959,7 @@ function render(fromData, force){
 }
 function setTab(t){
   if (S.tab === "edit" && t !== "edit" && S.dirty) toast("편집 중인 변경은 '내 스케줄'에 그대로 남아 있습니다");
+  if (S.tab === "study" && t !== "study" && S.mode === "live") scheduleReload();   // 공부하고 나오면 순공 기록 다시 불러오기
   S.tab = t;
   document.querySelectorAll("nav.tabs button").forEach(b => b.setAttribute("aria-selected", String(b.dataset.tab === t)));
   render(false, true); window.scrollTo({top:0});
@@ -933,6 +970,14 @@ const td = today(); document.getElementById("dateLabel").textContent = `${td.get
 window.addEventListener("beforeinstallprompt", e => { e.preventDefault(); S.installEvt = e; header(); });
 if ("serviceWorker" in navigator && /^https?:$/.test(location.protocol)) navigator.serviceWorker.register("sw.js").catch(() => {});
 document.addEventListener("visibilitychange", () => { if (document.visibilityState === "visible" && S.mode === "live"){ scheduleReload(); } });
+
+/* 공부 도우미(iframe)에 로그인 세션 넘겨 주기: 등록된 모듈 주소에서 온 'godlife:ready'에만 답함 */
+window.addEventListener("message", async e => {
+  const mod = Object.values(MODULES).find(m => m.origin && m.origin === e.origin);
+  if (!mod || !e.data || e.data.type !== "godlife:ready" || S.mode !== "live" || !e.source) return;
+  const {data: {session}} = await S.sb.auth.getSession(); if (!session) return;
+  e.source.postMessage({type:"godlife:session", access_token: session.access_token, refresh_token: session.refresh_token}, mod.origin);
+});
 
 /* ---------- 미리보기(데모) ---------- */
 function startDemo(){
