@@ -805,15 +805,24 @@ function alarmView(){
   const p = me(); if (!p) return onboarding();
   const a = Object.assign({}, ALARM_DEFAULT, p.alarm || {}), live = S.mode === "live";
   const wrap = h("div", {class:"stack"});
-  const dev = h("section", {class:"card"}, h("div", {class:"row spread"}, h("h2", null, "이 기기 알림"), S.pushOn ? h("span", {class:"chip ok"}, "켜짐") : h("span", {class:"chip"}, "꺼짐")),
-    h("div", {class:"note"}, "알림은 내 시간표 기준으로 내 기기에만 옵니다. 휴대폰과 PC 등 기기마다 한 번씩 켜 주세요."));
-  if (!live) dev.append(h("div", {class:"info"}, "미리보기에서는 알림을 켤 수 없습니다. 실제 주소에서 로그인하면 켤 수 있습니다."));
-  else if (isIOS && !isStandalone()) dev.append(h("div", {class:"banner"}, h("div", null, h("strong", null, "아이폰은 먼저 홈 화면에 추가해야 합니다."), h("br"), "Safari 아래 공유 버튼 → '홈 화면에 추가' → 홈 화면의 '갓생살기' 아이콘으로 열고 여기서 알림을 켜 주세요. (iOS 16.4 이상)")));
-  else if (!pushSupported()) dev.append(h("div", {class:"banner"}, h("div", null, "이 브라우저는 웹 알림을 지원하지 않습니다. 크롬이나 삼성 인터넷으로 열어 주세요.")));
-  else dev.append(h("div", {class:"row"},
-    S.pushOn ? h("button", {class:"btn", onclick: disablePush}, "이 기기 알림 끄기") : h("button", {class:"btn primary", onclick: enablePush}, "이 기기에서 알림 켜기"),
-    S.pushOn ? h("button", {class:"btn", onclick: testPush}, "테스트 알림 보내기") : null));
-  wrap.append(dev);
+  /* 알림을 켠 기기: 맨 아래 한 줄로 접어 둠. 아직 안 켠 기기: 맨 위에 크게 */
+  let dev;
+  if (S.pushOn){
+    dev = h("details", {class:"card", style:"gap:0"},
+      h("summary", {style:"display:flex;align-items:center;justify-content:space-between;gap:8px;list-style:none"},
+        h("span", {style:"color:var(--fg)"}, "이 기기 알림"), h("span", {class:"row"}, h("span", {class:"chip ok"}, "켜짐"), h("span", {class:"note"}, "관리 ›"))),
+      h("div", {class:"row", style:"margin-top:10px"},
+        h("button", {class:"btn small", onclick: testPush}, "테스트 알림 보내기"),
+        h("button", {class:"btn small ghost", onclick: disablePush}, "이 기기 알림 끄기")));
+  } else {
+    dev = h("section", {class:"card"}, h("div", {class:"row spread"}, h("h2", null, "이 기기 알림"), h("span", {class:"chip"}, "꺼짐")),
+      h("div", {class:"note"}, "알림은 내 시간표 기준으로 내 기기에만 옵니다. 휴대폰과 PC 등 기기마다 한 번씩 켜 주세요."));
+    if (!live) dev.append(h("div", {class:"info"}, "미리보기에서는 알림을 켤 수 없습니다. 실제 주소에서 로그인하면 켤 수 있습니다."));
+    else if (isIOS && !isStandalone()) dev.append(h("div", {class:"banner"}, h("div", null, h("strong", null, "아이폰은 먼저 홈 화면에 추가해야 합니다."), h("br"), "Safari 아래 공유 버튼 → '홈 화면에 추가' → 홈 화면의 '갓생살기' 아이콘으로 열고 여기서 알림을 켜 주세요. (iOS 16.4 이상)")));
+    else if (!pushSupported()) dev.append(h("div", {class:"banner"}, h("div", null, "이 브라우저는 웹 알림을 지원하지 않습니다. 크롬이나 삼성 인터넷으로 열어 주세요.")));
+    else dev.append(h("div", {class:"row"}, h("button", {class:"btn primary", onclick: enablePush}, "이 기기에서 알림 켜기")));
+    wrap.append(dev);
+  }
 
   const sw = (on, fn, label) => h("label", {class:"switch"}, h("input", {type:"checkbox", checked: on, "aria-label": label, onchange: ev => fn(ev.target.checked)}), h("span"));
   const sel = (val, opts, fn, label) => h("select", {"aria-label": label, onchange: ev => fn(ev.target.value)}, opts.map(([v,t]) => { const o = h("option", {value:v}, t); if (String(val) === String(v)) o.selected = true; return o; }));
@@ -826,19 +835,40 @@ function alarmView(){
     h("div", {class:"setrow"}, h("div", {class:"lbl"}, h("b", null, "일요일 주간 점검 알림"), h("span", {class:"note"}, "이번 주 공부 시간·운동 횟수·밀린 칸을 알려 줍니다.")),
       h("div", {class:"ctl"}, tm(a.sundayAt, v => updateAlarm({sundayAt: v}), "주간 점검 알림 시각"), sw(a.sundayOn, v => updateAlarm({sundayOn: v}), "일요일 주간 점검 알림")))));
 
-  const inst = h("section", {class:"card"}, h("h2", null, "앱으로 설치"));
-  if (isStandalone()) inst.append(h("div", {class:"note"}, "앱으로 설치되어 실행 중입니다."));
-  else {
-    if (S.installEvt) inst.append(h("button", {class:"btn primary", onclick: async () => { S.installEvt.prompt(); await S.installEvt.userChoice; S.installEvt = null; render(false, true); }}, "홈 화면에 설치"));
-    inst.append(h("ul", {class:"note", style:"margin:0;padding-left:18px"},
-      h("li", null, "안드로이드: 크롬 메뉴(⋮) → '홈 화면에 추가' 또는 '앱 설치'"),
-      h("li", null, "아이폰: Safari 공유 버튼 → '홈 화면에 추가'")));
-  }
-  wrap.append(inst);
+  if (!isStandalone()) wrap.append(h("section", {class:"card"}, h("h2", null, "앱으로 설치"),
+    h("div", {class:"note"}, "홈 화면에 아이콘으로 설치하면 앱처럼 열리고, 아이폰은 설치해야 알림이 옵니다."),
+    h("div", {class:"row"}, h("button", {class:"btn primary", onclick: doInstall}, "앱 설치하기"))));
+  if (S.pushOn) wrap.append(dev);
   wrap.append(h("section", {class:"card"}, h("h2", null, "계정"),
     h("div", {class:"row spread"}, h("span", null, live ? S.email : "미리보기 (로그인 안 함)"),
       live ? h("button", {class:"btn", onclick: async () => { await disablePush().catch(() => {}); await S.sb.auth.signOut(); location.reload(); }}, "로그아웃") : (S.sb ? h("a", {class:"btn", href:"./"}, "로그인하러 가기") : null))));
   return wrap;
+}
+
+/* 설치: 브라우저가 설치 창을 지원하면 바로 띄우고, 아니면(아이폰·이미 설치 등) 방법 안내 */
+async function doInstall(){
+  if (S.installEvt){
+    const e = S.installEvt; S.installEvt = null;
+    try { e.prompt(); const r = await e.userChoice; toast(r && r.outcome === "accepted" ? "설치했습니다. 홈 화면의 '갓생살기' 아이콘으로 여세요" : "설치를 취소했습니다"); } catch { toast("설치 창을 열지 못했습니다"); }
+    render(false, true); return;
+  }
+  const android = /android/i.test(navigator.userAgent), samsung = /SamsungBrowser/i.test(navigator.userAgent);
+  openSheet(() => h("div", {class:"stack", style:"gap:12px"},
+    h("div", {class:"row spread"}, h("b", null, "홈 화면에 설치하는 방법"), h("button", {class:"btn small ghost", onclick: closeSheet}, "닫기")),
+    isIOS ? h("ol", {style:"margin:0;padding-left:20px;display:flex;flex-direction:column;gap:6px"},
+        h("li", null, "Safari로 이 주소를 엽니다 (카카오톡·네이버 앱 안에서 열었다면 Safari로 다시 여세요)"),
+        h("li", null, "아래쪽 공유 버튼(네모에 위 화살표)을 누릅니다"),
+        h("li", null, "'홈 화면에 추가' → '추가'"),
+        h("li", null, "홈 화면의 '갓생살기' 아이콘으로 열고 로그인 → 알림·설정에서 알림 켜기"))
+    : android ? h("ol", {style:"margin:0;padding-left:20px;display:flex;flex-direction:column;gap:6px"},
+        samsung ? h("li", null, "아래쪽 메뉴(≡) → '현재 페이지 추가' → '홈 화면'") : h("li", null, "크롬 오른쪽 위 메뉴(⋮) → '앱 설치' 또는 '홈 화면에 추가'"),
+        h("li", null, "카카오톡 안에서 열었다면 오른쪽 위 ⋮ → '다른 브라우저로 열기' 후 다시 시도"),
+        h("li", null, "홈 화면의 '갓생살기' 아이콘으로 열기"))
+    : h("ol", {style:"margin:0;padding-left:20px;display:flex;flex-direction:column;gap:6px"},
+        h("li", null, "주소창 오른쪽 끝의 설치 아이콘(모니터에 ↓ 모양)을 누릅니다"),
+        h("li", null, "없으면 브라우저 메뉴(⋯) → '앱' → '이 사이트를 앱으로 설치'"),
+        h("li", null, "이미 설치했다면 시작 메뉴에서 '갓생살기'로 여세요")),
+    h("div", {class:"note"}, "브라우저가 설치 창을 바로 띄워 주지 않을 때 보이는 안내입니다.")));
 }
 
 /* ---------- 렌더 ---------- */
@@ -846,7 +876,7 @@ function header(){
   const w = document.getElementById("who"); w.replaceChildren();
   const p = me();
   if (p){ w.append(h("span", {class:"chip acc"}, p.label || "나")); if (p.exam) w.append(h("span", {class:"chip"}, p.exam)); const dd = dday(p); w.append(h("span", {class:dd ? "chip acc num" : "chip"}, dd || "시험일 미입력")); }
-  if (S.installEvt && !isStandalone()) w.append(h("button", {class:"btn small primary", onclick: () => setTab("alarm")}, "앱 설치"));
+  if (!isStandalone() && S.mode === "live") w.append(h("button", {class:"btn small primary", onclick: doInstall}, "앱 설치"));
   document.getElementById("demoBanner").hidden = S.mode !== "demo";
   document.getElementById("tabs").hidden = !(S.mode === "live" || S.mode === "demo");
 }
