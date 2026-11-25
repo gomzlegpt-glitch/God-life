@@ -548,8 +548,8 @@ function startWith(key){
 }
 
 /* ---------- 화면: 오늘 ---------- */
-function timeline(pid, p, editable){
-  const d = today(), key = ymd(d), bl = blocksOn(p, d), day = dayDoc(pid, key), nm = nowMin();
+function timeline(pid, p, editable, hideRecords){
+  const d = today(), key = ymd(d), bl = blocksOn(p, d), day = hideRecords ? {} : dayDoc(pid, key), nm = nowMin();
   if (!bl.length) return h("div", {class:"empty"}, "오늘 요일에 등록된 블록이 없습니다.");
   const ul = h("ol", {class:"tl"});
   for (const b of bl){
@@ -559,7 +559,7 @@ function timeline(pid, p, editable){
       h("div", {class:"bx"},
         h("div", {class:"row spread"}, h("div", {class:"row"}, h("span", {class:"lab"}, b.label || TYPES[b.type]), b.type !== "fixed" ? kindChip(b.type) : null),
           h("div", {class:"row"}, cur ? h("span", {class:"chip now"}, "지금") : null, h("span", {class:"note num"}, hm(span(b.start, b.end))))),
-        tracked(b) ? statusCtl(pid, key, b, editable) : null,
+        tracked(b) && !hideRecords ? statusCtl(pid, key, b, editable) : null,
         editable && b.type === "study" && MODULES[p.examKey] && MODULES[p.examKey].ready ? h("div", null, h("button", {class:"btn small", onclick: () => setTab("study")}, `${MODULES[p.examKey].name}에서 풀기 ›`)) : null)));
   }
   return ul;
@@ -671,17 +671,16 @@ function togetherView(){
   if (!os.length) wrap.append(h("div", {class:"card"}, h("h2", null, "배우자 스케줄"), h("div", {class:"empty"}, "배우자분이 아직 스케줄을 만들지 않았습니다. 배우자분이 이 앱에서 가입하고 추천 스케줄을 고르면 여기에 나타납니다.")));
   else {
     if (!S.partner || !S.people[S.partner] || S.partner === S.uid) S.partner = os[0].id;
-    const p = Object.assign({id:S.partner}, S.people[S.partner]), ws = weekStart(today()), stt = weekStats(p.id, p, today()), dd = dday(p);
+    const p = Object.assign({id:S.partner}, S.people[S.partner]), ws = weekStart(today()), dd = dday(p);
     if (os.length > 1) wrap.append(h("div", {class:"row"}, os.map(o => h("button", {class:`btn small${o.id === S.partner ? " primary" : ""}`, onclick: () => { S.partner = o.id; render(false, true); }}, o.label || "이름 없음"))));
     wrap.append(h("div", {class:"row"}, h("h2", {style:"margin:0;font-size:1.05rem"}, `${p.label || "배우자"}의 스케줄`), p.exam ? h("span", {class:"chip"}, p.exam) : null, dd ? h("span", {class:"chip acc num"}, dd) : null, h("span", {class:"note"}, "보기 전용")));
-    const goal = (Number(p.weekStudyH)||0) * 60;
-    wrap.append(h("div", {class:"stats"},
-      statCard("이번 주 공부", hm(stt.done), goal ? hm(goal) : "목표 미설정", goal ? Math.round(stt.done/goal*100) : 0, "t-study"),
-      statCard("이번 주 운동", `${stt.exDays}회`, p.weekExN ? `${p.weekExN}회` : "목표 미설정", p.weekExN ? Math.round(stt.exDays/p.weekExN*100) : 0, "t-exercise"),
-      statCard("오늘 모드", modeFor(p.id, ymd(today())) === "min" ? "최소 분량" : "평소대로", null, null, "", "야근·약속이 있으면 최소 분량으로 바뀝니다")));
+    /* 서로의 공부·운동 기록(완료 여부, 공부 시간, 사유)은 보여 주지 않음. 일정표와 오늘 모드만 */
+    const mode = modeFor(p.id, ymd(today()));
+    wrap.append(h("div", {class:"info row spread"}, h("span", null, "오늘은 ", h("b", null, mode === "min" ? "최소 분량 모드" : "평소대로"), mode === "min" ? " (야근·약속 있음)" : ""),
+      h("span", {class:"note"}, "공부·운동 기록은 서로 보이지 않습니다")));
     wrap.append(h("div", {class:"cols"},
-      h("section", {class:"card"}, h("h2", null, "오늘"), timeline(p.id, p, false)),
-      h("section", {class:"card"}, h("h2", null, "이번 주 시간표"), timetable(p.blocks || [], {start: ws, statusOf: (b, d) => { const day = dayDoc(p.id, ymd(d)); return day.st && day.st[b.id]; }, onPick: (b, d) => blockSheet(p.id, b, d)}))));
+      h("section", {class:"card"}, h("h2", null, "오늘 일정"), timeline(p.id, p, false, true)),
+      h("section", {class:"card"}, h("h2", null, "이번 주 시간표"), timetable(p.blocks || [], {start: ws}))));
   }
   wrap.append(familyCard());
   return wrap;
