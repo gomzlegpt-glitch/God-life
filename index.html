@@ -177,11 +177,15 @@ details[open] summary{margin-bottom:8px}
 .skel{height:220px;border-radius:14px;background:linear-gradient(90deg,var(--sunk),var(--surface),var(--sunk));background-size:200% 100%}
 @media (prefers-reduced-motion: no-preference){.skel{animation:sk 1.4s linear infinite}.bar span{transition:width .3s ease}}
 @keyframes sk{to{background-position:-200% 0}}
+nav.tabs .ls{display:none}
+.studyframe{display:block;width:100%;height:calc(100dvh - 250px);min-height:520px;border:1px solid var(--line);border-radius:14px;background:#fff}
 /* 휴대폰: 탭을 화면 아래 고정 (앱처럼) */
 @media (max-width:560px){
   nav.tabs{position:fixed;left:0;right:0;bottom:0;z-index:20;border-radius:0;gap:2px;background:var(--surface);border-top:1px solid var(--line);
     padding:6px max(6px,env(safe-area-inset-left,0px)) calc(6px + env(safe-area-inset-bottom,0px))}
   nav.tabs button{flex:1 1 0;min-width:0;padding:10px 2px;font-size:.8rem}
+  nav.tabs .lf{display:none} nav.tabs .ls{display:inline}
+  .studyframe{height:calc(100dvh - 230px - env(safe-area-inset-bottom,0px))}
   nav.tabs button[aria-selected="true"]{background:var(--accent-soft);color:var(--accent);box-shadow:none}
   .savebar{bottom:calc(70px + env(safe-area-inset-bottom,0px))}
   .toast{bottom:calc(76px + env(safe-area-inset-bottom,0px))}
@@ -198,10 +202,11 @@ details[open] summary{margin-bottom:8px}
   <div class="demo" id="demoBanner" hidden><b>미리보기 모드</b> · 추천 스케줄과 예시 기록으로 보여 드리는 화면입니다. 눌러 보셔도 저장되지 않습니다.</div>
   <nav class="tabs" id="tabs" role="tablist" aria-label="화면" hidden>
     <button role="tab" data-tab="today" aria-selected="true">오늘</button>
-    <button role="tab" data-tab="week" aria-selected="false">이번 주</button>
-    <button role="tab" data-tab="together" aria-selected="false">함께 보기</button>
-    <button role="tab" data-tab="edit" aria-selected="false">내 스케줄</button>
-    <button role="tab" data-tab="alarm" aria-selected="false">알림·설정</button>
+    <button role="tab" data-tab="week" aria-selected="false"><span class="lf">이번 주</span><span class="ls">주간</span></button>
+    <button role="tab" data-tab="study" aria-selected="false">공부</button>
+    <button role="tab" data-tab="together" aria-selected="false"><span class="lf">함께 보기</span><span class="ls">함께</span></button>
+    <button role="tab" data-tab="edit" aria-selected="false"><span class="lf">내 스케줄</span><span class="ls">스케줄</span></button>
+    <button role="tab" data-tab="alarm" aria-selected="false"><span class="lf">알림·설정</span><span class="ls">설정</span></button>
   </nav>
   <main id="main"><div class="skel" aria-label="불러오는 중"></div></main>
 </div>
@@ -222,8 +227,8 @@ const W = [1,2,3,4,5];
 const ALARM_DEFAULT = {blockOn:true, blockBefore:10, eveningOn:true, eveningAt:"22:00", sundayOn:true, sundayAt:"20:00"};
 /* 공부 모듈: 프로필의 examKey로 연결. 같은 주소 아래 하위 페이지로 붙이면 로그인이 그대로 이어짐 */
 const MODULES = {
-  civil9: {name:"사복직 합격 도우미", path:"civil/", ready:false},
-  elec:   {name:"전기기사 도우미", path:"elec/", ready:false}
+  civil9: {name:"사복직 합격노트", who:"아내 · 9급 사회복지직", url:"https://sw9note-2f913ee331.netlify.app/", ready:true},
+  elec:   {name:"전기기사 도우미", who:"남편 · 전기기사", url:"", ready:false}
 };
 
 /* ---------- 추천 스케줄 ---------- */
@@ -554,7 +559,8 @@ function timeline(pid, p, editable){
       h("div", {class:"bx"},
         h("div", {class:"row spread"}, h("div", {class:"row"}, h("span", {class:"lab"}, b.label || TYPES[b.type]), b.type !== "fixed" ? kindChip(b.type) : null),
           h("div", {class:"row"}, cur ? h("span", {class:"chip now"}, "지금") : null, h("span", {class:"note num"}, hm(span(b.start, b.end))))),
-        tracked(b) ? statusCtl(pid, key, b, editable) : null)));
+        tracked(b) ? statusCtl(pid, key, b, editable) : null,
+        editable && b.type === "study" && MODULES[p.examKey] && MODULES[p.examKey].ready ? h("div", null, h("button", {class:"btn small", onclick: () => setTab("study")}, `${MODULES[p.examKey].name}에서 풀기 ›`)) : null)));
   }
   return ul;
 }
@@ -582,7 +588,8 @@ function todaySummary(pid, p, editable){
   const evs = eventsFor(pid, key);
   if (evs.length) card.append(h("div", null, h("h3", null, "오늘 일정"), ...evs.map(e => h("div", {class:"row", style:"margin-top:6px"}, h("span", {class:"chip"}, e.type), h("span", {class:"num"}, e.time || ""), h("span", {class:"muted"}, e.memo || "")))));
   const mod = MODULES[p.examKey];
-  if (mod) card.append(h("div", {class:"info"}, h("b", null, mod.name), " · ", mod.ready ? h("a", {href: mod.path}, "공부하러 가기") : "같은 앱에 연결 예정입니다. 연결되면 푼 문제가 여기 공부 기록에 자동으로 들어옵니다."));
+  if (mod) card.append(h("div", {class:"info row spread"}, h("span", null, h("b", null, mod.name), " · ", mod.ready ? "공부 탭에서 바로 풉니다" : "준비 중입니다"),
+    mod.ready ? h("button", {class:"btn small primary", onclick: () => setTab("study")}, "공부하러 가기") : null));
   return card;
 }
 function todayView(){
@@ -845,6 +852,31 @@ function alarmView(){
   return wrap;
 }
 
+/* ---------- 화면: 공부 (각자 연결된 공부 도우미) ---------- */
+function studyView(){
+  const p = me(); if (!p) return onboarding();
+  const mine = MODULES[p.examKey], key = S.studyPreview || p.examKey, mod = MODULES[key];
+  const wrap = h("div", {class:"stack", style:"gap:10px"});
+  if (mod && mod.ready){
+    wrap.append(h("div", {class:"row spread"},
+      h("div", {class:"row"}, h("b", null, mod.name), h("span", {class:"chip"}, mod.who), key !== p.examKey ? h("span", {class:"chip min"}, "미리 보기") : null),
+      h("div", {class:"row"},
+        key !== p.examKey ? h("button", {class:"btn small ghost", onclick: () => { S.studyPreview = null; render(false, true); }}, "닫기") : null,
+        h("a", {class:"btn small", href: mod.url, target:"_blank", rel:"noopener"}, "새 창으로 열기 ↗"))));
+    wrap.append(h("iframe", {id:"studyFrame", class:"studyframe", src: mod.url, title: mod.name, "data-url": mod.url, allow:"clipboard-write"}));
+    wrap.append(h("div", {class:"note"}, "지금은 화면만 연결된 상태입니다. 푼 기록·순공시간은 아직 합격노트 쪽에만 저장되고, 갓생살기 공부 기록과 자동으로 합쳐지는 건 다음 단계입니다."));
+    return wrap;
+  }
+  wrap.append(h("section", {class:"card"},
+    h("h2", null, mine ? mine.name : "연결된 공부 도우미 없음", mine ? h("span", {class:"chip"}, mine.who) : null),
+    h("div", {class:"note"}, mine ? "아직 준비 중입니다. 기출문제집과 목표 회차가 정해지면 이 자리에 붙습니다." : "'내 스케줄 → 기본 정보 → 공부 도우미 연결'에서 고를 수 있습니다.")));
+  const others = Object.entries(MODULES).filter(([k,m]) => m.ready && k !== p.examKey);
+  if (others.length) wrap.append(h("section", {class:"card"}, h("h2", null, "다른 공부 도우미"),
+    others.map(([k,m]) => h("div", {class:"row spread"}, h("span", null, h("b", null, m.name), " ", h("span", {class:"note"}, m.who)),
+      h("button", {class:"btn small primary", onclick: () => { S.studyPreview = k; render(false, true); }}, "미리 보기")))));
+  return wrap;
+}
+
 /* 설치: 브라우저가 설치 창을 지원하면 바로 띄우고, 아니면(아이폰·이미 설치 등) 방법 안내 */
 async function doInstall(){
   if (S.installEvt){
@@ -887,7 +919,8 @@ function render(fromData, force){
   if (S.mode === "loading") return;
   if (S.mode === "login") return main.replaceChildren(loginView());
   if (S.mode === "nolib") return main.replaceChildren(h("div", {class:"empty"}, "인터넷에 연결되어 있지 않아 불러오지 못했습니다. 연결 후 다시 열어 주세요."));
-  main.replaceChildren(S.tab === "today" ? todayView() : S.tab === "week" ? weekView() : S.tab === "together" ? togetherView() : S.tab === "edit" ? editView() : alarmView());
+  if (S.tab === "study" && fromData && document.getElementById("studyFrame")) return;   // 공부 중엔 데이터 갱신으로 화면을 다시 그리지 않음 (풀던 문제 유지)
+  main.replaceChildren(S.tab === "today" ? todayView() : S.tab === "week" ? weekView() : S.tab === "study" ? studyView() : S.tab === "together" ? togetherView() : S.tab === "edit" ? editView() : alarmView());
 }
 function setTab(t){
   if (S.tab === "edit" && t !== "edit" && S.dirty) toast("편집 중인 변경은 '내 스케줄'에 그대로 남아 있습니다");
@@ -896,7 +929,7 @@ function setTab(t){
   render(false, true); window.scrollTo({top:0});
 }
 document.querySelectorAll("nav.tabs button").forEach(b => b.addEventListener("click", () => setTab(b.dataset.tab)));
-{ const ht = (location.hash || "").slice(1); if (["today","week","together","edit","alarm"].includes(ht)){ S.tab = ht; document.querySelectorAll("nav.tabs button").forEach(b => b.setAttribute("aria-selected", String(b.dataset.tab === ht))); } }
+{ const ht = (location.hash || "").slice(1); if (["today","week","study","together","edit","alarm"].includes(ht)){ S.tab = ht; document.querySelectorAll("nav.tabs button").forEach(b => b.setAttribute("aria-selected", String(b.dataset.tab === ht))); } }
 const td = today(); document.getElementById("dateLabel").textContent = `${td.getFullYear()}년 ${td.getMonth()+1}월 ${td.getDate()}일 ${DAYS[td.getDay()]}요일`;
 window.addEventListener("beforeinstallprompt", e => { e.preventDefault(); S.installEvt = e; header(); });
 if ("serviceWorker" in navigator && /^https?:$/.test(location.protocol)) navigator.serviceWorker.register("sw.js").catch(() => {});
